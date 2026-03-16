@@ -324,7 +324,7 @@
           </div>
 
           <div id="create-button">
-            <button class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
+            <button id="create-button-inner" class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
           </div>
         </div>
 
@@ -521,7 +521,8 @@
         if (document.getElementById("newCart").checked) params.append("newCart", "true");
 
         generatedUrl = `${baseUrl}?${params.toString()}`;
-        document.getElementById("create-button").style.display = "none";
+        document.getElementById("create-button").style.display = "block";
+        document.getElementById("create-button-inner").textContent = "Create Again";
         document.getElementById("output-area").style.display = "block";
         const qrDiv = document.getElementById("qrcode");
         qrDiv.innerHTML = "";
