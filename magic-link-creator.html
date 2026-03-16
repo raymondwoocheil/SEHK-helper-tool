@@ -199,6 +199,7 @@
         grid-template-columns: 1fr;
         gap: 8px;
       }
+      #create-button,
       #action-primary {
         padding: 8px 0px;
         background: var(--bg);
@@ -256,6 +257,7 @@
           width: 340px;
         }
 
+        #create-button,
         #action-primary {
           position: sticky;
           bottom: 0;
@@ -320,7 +322,9 @@
             <div class="checkbox-group"><input type="checkbox" id="newCart" /> <label for="newCart">New Cart</label></div>
           </div>
 
-          <button id="create-button" class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
+          <div id="create-button">
+            <button class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
+          </div>
         </div>
 
         <div id="output-area">
