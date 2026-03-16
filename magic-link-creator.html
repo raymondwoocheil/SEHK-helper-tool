@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Magic Link Creator V2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+      :root {
+        --primary: #006bea;
+        --bg: #f8fafc;
+        --border: #e2e8f0;
+        --error: #ef4444;
+        --secondary: #64748b;
+      }
+      body {
+        font-family: -apple-system, system-ui, sans-serif;
+        background: var(--bg);
+        display: flex;
+        justify-content: center;
+        padding: 0;
+        margin: 0;
+      }
+      .container {
+        width: 740px;
+        background: var(--bg);
+        padding: 0;
+        /*border-radius: 12px;*/
+        /*box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);*/
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding: 24px 0;
+        background: var(--bg);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #1e293b;
+        font-weight: bold;
+        font-family: SamsungSharpSans, "Samsung Sharp Sans", Arial, Helvetica, san-seris;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        background: #f1f5f9;
+        padding: 8px;
+        border-radius: 8px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border-radius: 6px;
+        color: var(--secondary);
+      }
+      .tab.active {
+        background: white;
+        color: var(--primary);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      }
+
+      .btn-clear {
+        background: #white;
+        color: var(--primary);
+        border: none;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .section {
+        margin-bottom: 16px;
+        background: #f1f5f9;
+        padding: 8px;
+        border-radius: 8px;
+      }
+
+      .tabs + .section {
+        margin-top: -30px;
+        padding-top: 30px;
+      }
+
+      label {
+        flex: 1;
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px 2px;
+        color: var(--secondary);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 4px 2px;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-sizing: border-box;
+        font-size: 13px;
+      }
+
+      /* Autocomplete Styles */
+      .search-container {
+        position: relative;
+      }
+      .suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border);
+        z-index: 10;
+        max-height: 150px;
+        overflow-y: auto;
+        border-radius: 0 0 6px 6px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: none;
+      }
+      .suggestion-item {
+        padding: 8px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .suggestion-item:hover {
+        background: #f8fafc;
+        color: var(--primary);
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .checkbox-group input {
+        width: 16px;
+        height: 16px;
+      }
+
+      .checkbox-group label:hover {
+        color: --var(--primary);
+      }
+
+      .btn-main {
+        width: 100%;
+        padding: 14px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+      }
+
+      #output-area {
+        display: none;
+        text-align: center;
+        padding-bottom: 60px;
+      }
+      #qrcode {
+        display: flex;
+        justify-content: center;
+        padding: 30px;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      .action-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      #action-primary {
+        padding: 8px 0px;
+        background: var(--bg);
+      }
+      .btn-sec {
+        width: 100%;
+        background: var(--secondary);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .btn-out {
+        width: 100%;
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--primary);
+        padding: 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .btn:hover {
+        outline: 1px solid rgba(0, 0, 0, 0.2);
+      }
+      .btn:active {
+        outline: 1px solid rgba(0, 0, 0, 0.5);
+      }
+
+      .responsive-container {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      #form-area,
+      #output-area {
+        flex: 1;
+        max-width: 340px;
+        transition: all 0.5s;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      @media screen and (max-width: 719px) {
+        .container {
+          width: 340px;
+        }
+
+        #action-primary {
+          position: sticky;
+          bottom: 0;
+          padding: 8px 0 16px 0px;
+        }
+      }
+
+      @media screen and (min-width: 720px) {
+        #output-area {
+          margin-top: 90px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="responsive-container">
+        <div id="form-area">
+          <div class="header">
+            <h1>Magic Link Creator</h1>
+            <button class="btn btn-clear" onclick="clearAll()">Reset</button>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active" id="tab-sku" onclick="switchTab('sku')">By SKU</div>
+            <div class="tab" id="tab-product" onclick="switchTab('product')">By Product</div>
+          </div>
+
+          <div class="section">
+            <table id="input-table">
+              <thead>
+                <tr>
+                  <th style="text-align: left; font-size: 10px; color: #64748b; padding: 0 2px;" id="input-label">
+                    SKU ID (Paste with line breaks)
+                  </th>
+                  <th style="width: 60px; font-size: 10px; color: #64748b">QTY</th>
+                </tr>
+              </thead>
+              <tbody id="input-body"></tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <label>Store</label>
+
+            <select id="store">
+              <option value="B2C">B2C (Default)</option>
+              <option value="EPP">EPP</option>
+              <option value="SPP">SPP</option>
+              <option value="EA">EA</option>
+            </select>
+
+            <label style="margin-top: 12px">(Optional) Add voucher code</label>
+            <input type="text" id="voucher" placeholder="Voucher Code" />
+
+            <label style="margin-top: 12px">(Optional) URL if unavailable</label>
+            <input type="text" id="oos" placeholder="www.samsung.com/hk/" />
+
+            <br><br>
+
+            <div class="checkbox-group"><input type="checkbox" id="app" /> <label for="app">Add to Shop App</label></div>
+            <div class="checkbox-group"><input type="checkbox" id="newCart" /> <label for="newCart">New Cart</label></div>
+          </div>
+
+          <button id="create-button" class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
+        </div>
+
+        <div id="output-area">
+          <div id="qrcode"></div>
+
+          <div id="action-primary" class="action-grid">
+            <button class="btn btn-main" onclick="openLink()">Open Magic Link</button>
+          </div>
+
+          <div class="action-grid">
+            <button class="btn btn-out" onclick="copyLink()">Copy to Clipboard</button>
+            <button class="btn btn-sec" onclick="downloadQR()">Save QR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const CONFIG = {
+        SHEET_ID: "15m5NHSKLkzI01HIXxuWoi8DHtCZyzXR_W77GtrttblU",
+        RANGE: `'SKU-MAIN'!A:B`,
+        API_KEY: "AIzaSyDVoZ-994ZW22ZRnMVTo1G9zBG34--229Q",
+        WHITELIST: ["samsung.com"],
+      };
+
+      let productFeed = []; // Array of {sku: "", name: ""}
+      let currentMode = "sku";
+      const inputBody = document.getElementById("input-body");
+      let generatedUrl = "";
+
+      // Load Data Feed
+      async function loadFeed() {
+        try {
+          const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.RANGE}?key=${CONFIG.API_KEY}`;
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.values) {
+            // Filter out empty rows and ensure columns exist before mapping
+            productFeed = data.values
+              .filter((row) => row && row[0] && row[1])
+              .map((row) => ({
+                sku: String(row[0]).trim(),
+                name: String(row[1]).trim(),
+              }));
+            console.log("Feed loaded:", productFeed.length, "items");
+          }
+        } catch (e) {
+          console.error("Feed error:", e);
+        }
+      }
+
+      function switchTab(mode) {
+        currentMode = mode;
+        document.getElementById("tab-sku").classList.toggle("active", mode === "sku");
+        document.getElementById("tab-product").classList.toggle("active", mode === "product");
+        document.getElementById("input-label").innerText =
+          mode === "sku" ? "SKU ID (Paste with line breaks)" : "PRODUCT NAME";
+
+        inputBody.innerHTML = "";
+        if (mode === "sku") {
+          addRow();
+        } else {
+          for (let i = 0; i < 6; i++) addRow();
+        }
+      }
+
+      function addRow(sku = "", qty = 1, productName = "") {
+        if (inputBody.children.length >= 6) return;
+
+        const row = document.createElement("tr");
+        if (currentMode === "sku") {
+          row.innerHTML = `
+                <td><input type="text" class="sku-input" placeholder="Enter SKU" value="${sku}"></td>
+                <td><input type="number" class="qty-input" value="${qty}" min="1"></td>
+            `;
+          setupSkuEvents(row);
+        } else {
+          row.innerHTML = `
+                <td class="search-container">
+                    <input type="text" class="prod-search" placeholder="Search product..." value="${productName}" data-sku="${sku}">
+                    <div class="suggestions"></div>
+                </td>
+                <td><input type="number" class="qty-input" value="${qty}" min="1"></td>
+            `;
+          setupProductEvents(row);
+        }
+        inputBody.appendChild(row);
+      }
+
+      function setupSkuEvents(row) {
+        const input = row.querySelector(".sku-input");
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addRow();
+            inputBody.lastElementChild.querySelector(".sku-input").focus();
+          }
+        });
+        input.addEventListener("paste", (e) => {
+          const lines = (e.clipboardData || window.clipboardData)
+            .getData("text")
+            .split(/\r?\n/)
+            .filter((l) => l.trim());
+          if (lines.length > 1) {
+            e.preventDefault();
+            lines.forEach((l) => addRow(l.trim()));
+            if (input.value === "") row.remove();
+          }
+        });
+      }
+
+      function setupProductEvents(row) {
+        const input = row.querySelector(".prod-search");
+        const suggBox = row.querySelector(".suggestions");
+
+        input.addEventListener("input", (e) => {
+          const val = (e.target.value || "").toLowerCase(); // Safety fallback to empty string
+          suggBox.innerHTML = "";
+          if (!val) {
+            suggBox.style.display = "none";
+            return;
+          }
+
+          // Use optional chaining and fallback for p.name
+          const matches = productFeed.filter((p) => (p.name || "").toLowerCase().includes(val)).slice(0, 30);
+
+          if (matches.length > 0) {
+            matches.forEach((m) => {
+              const item = document.createElement("div");
+              item.className = "suggestion-item";
+              item.innerText = m.name;
+              item.onclick = () => {
+                input.value = m.name;
+                input.dataset.sku = m.sku;
+                suggBox.style.display = "none";
+              };
+              suggBox.appendChild(item);
+            });
+            suggBox.style.display = "block";
+          } else {
+            suggBox.style.display = "none";
+          }
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!row.contains(e.target)) suggBox.style.display = "none";
+        });
+      }
+
+      function clearAll() {
+        inputBody.innerHTML = "";
+        switchTab(currentMode);
+        document.getElementById("voucher").value = "";
+        document.getElementById("oos").value = "";
+        document.getElementById("output-area").style.display = "none";
+      }
+
+      function generateLink() {
+        const baseUrl = "https://www.samsung.com/hk/offer/magic/";
+        const params = new URLSearchParams();
+        let count = 0;
+
+        const rows = inputBody.querySelectorAll("tr");
+        rows.forEach((row) => {
+          let sku = "";
+          if (currentMode === "sku") {
+            sku = row.querySelector(".sku-input").value.trim();
+          } else {
+            sku = row.querySelector(".prod-search").dataset.sku || "";
+          }
+
+          if (sku) {
+            count++;
+            params.append(`productCode[${count}]`, sku);
+            params.append(`productQty[${count}]`, row.querySelector(".qty-input").value || 1);
+          }
+        });
+
+        if (count === 0) return alert("Select at least one product");
+
+        const store = document.getElementById("store").value;
+        if (store !== "B2C") params.append("store", store);
+
+        const v = document.getElementById("voucher").value.trim();
+        if (v) params.append("voucherCode", v);
+
+        const oos = document.getElementById("oos").value.trim();
+        if (oos) params.append("oosLink", oos);
+
+        if (document.getElementById("app").checked) params.append("app", "true");
+        if (document.getElementById("newCart").checked) params.append("newCart", "true");
+
+        generatedUrl = `${baseUrl}?${params.toString()}`;
+        document.getElementById("create-button").style.display = "none";
+        document.getElementById("output-area").style.display = "block";
+        const qrDiv = document.getElementById("qrcode");
+        qrDiv.innerHTML = "";
+        new QRCode(qrDiv, { text: generatedUrl, width: 280, height: 280 });
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+
+      function openLink() {
+        window.open(generatedUrl, "_blank");
+      }
+      function copyLink() {
+        navigator.clipboard.writeText(generatedUrl);
+        alert("Copied");
+      }
+      function downloadQR() {
+        const img = document.querySelector("#qrcode img");
+        if (!img) return;
+        const link = document.createElement("a");
+        link.download = "magic-qr.png";
+        link.href = img.src;
+        link.click();
+      }
+
+      // Init
+      loadFeed();
+      switchTab("sku");
+    </script>
+  </body>
+</html>
