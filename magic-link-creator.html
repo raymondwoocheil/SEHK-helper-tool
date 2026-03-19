@@ -390,9 +390,7 @@
 
     <script>
       const CONFIG = {
-        SHEET_ID: "15m5NHSKLkzI01HIXxuWoi8DHtCZyzXR_W77GtrttblU",
-        RANGE: `'SKU-MAIN'!A:B`,
-        API_KEY: "AIzaSyDVoZ-994ZW22ZRnMVTo1G9zBG34--229Q",
+        CSV_PATH: "sku-ref.csv", // Path to your local CSV file
         WHITELIST: ["samsung.com"],
       };
 
@@ -401,22 +399,34 @@
       const inputBody = document.getElementById("input-body");
       let generatedUrl = "";
 
+      // Load Data Feed from local CSV
       async function loadFeed() {
         try {
-          const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${CONFIG.RANGE}?key=${CONFIG.API_KEY}`;
-          const response = await fetch(url);
-          const data = await response.json();
-          if (data.values) {
-            productFeed = data.values
-              .filter((row) => row && row[0] && row[1])
-              .map((row) => ({
-                sku: String(row[0]).trim(),
-                name: String(row[1]).trim(),
-              }));
-          }
-        } catch (e) { console.error("Feed error:", e); }
-      }
+          const response = await fetch(CONFIG.CSV_PATH);
+          const csvText = await response.text();
 
+          // Split CSV by line and parse columns
+          const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+          
+          // Replace the .map section in loadFeed with this if your CSV uses quotes
+          productFeed = rows.map(line => {
+            // Regex to split by comma but ignore commas inside double quotes
+            const columns = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+            if (columns) {
+              return {
+                sku: columns[0].replace(/"/g, "").trim(),
+                name: columns[1].replace(/"/g, "").trim()
+              };
+            }
+            return null;
+          }).filter(item => item !== null);
+
+          console.log("CSV Feed loaded:", productFeed.length, "items");
+        } catch (e) {
+          console.error("Error loading CSV feed:", e);
+        }
+      }
+      
       function switchTab(mode) {
         currentMode = mode;
         document.getElementById("tab-sku").classList.toggle("active", mode === "sku");
