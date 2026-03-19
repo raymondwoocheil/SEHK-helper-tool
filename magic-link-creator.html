@@ -391,8 +391,9 @@
 
     <script>
       const CONFIG = {
-        CSV_PATH: "sku-ref.csv", // Path to your local CSV file
-        WHITELIST: ["samsung.com"],
+        // Use your export link here
+        CSV_PATH: "https://docs.google.com/spreadsheets/d/15m5NHSKLkzI01HIXxuWoi8DHtCZyzXR_W77GtrttblU/export?format=csv&gid=156800451",
+        WHITELIST: ["samsung.com"]
       };
 
       let productFeed = [];
@@ -404,25 +405,24 @@
       async function loadFeed() {
         try {
           const response = await fetch(CONFIG.CSV_PATH);
+          if (!response.ok) throw new Error("Failed to reach Google Sheet. Check sharing permissions.");
+          
           const csvText = await response.text();
-
           const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
           
           productFeed = rows.map(line => {
-            // Regex to split by comma but ignore commas inside double quotes
+            // Regex to handle commas inside quotes (standard for GSheets CSV exports)
             const columns = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            
-            // Safety Check: Ensure we have at least 2 columns before calling .replace()
             if (columns && columns.length >= 2) {
               return {
-                sku: columns[0] ? columns[0].replace(/"/g, "").trim() : "",
-                name: columns[1] ? columns[1].trim().replace(/^"|"$/g, "") : ""
+                sku: columns[0].replace(/"/g, "").trim(),
+                name: columns[1].trim().replace(/^"|"$/g, "")
               };
             }
             return null;
           }).filter(item => item !== null);
-
-          console.log("CSV Feed loaded:", productFeed.length, "items");
+      
+          console.log("Google Sheet CSV loaded:", productFeed.length, "items");
         } catch (e) {
           console.error("Error loading CSV feed:", e);
         }
