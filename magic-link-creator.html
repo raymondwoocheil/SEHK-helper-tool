@@ -542,16 +542,30 @@
         if (document.getElementById("newCart").checked) params.append("newCart", "true");
 
         generatedUrl = `${baseUrl}?${params.toString()}`;
-        
+
         // Regeneration Logic: Keep button visible but update text
         document.getElementById("create-button-inner").textContent = "Update Magic Link";
         document.getElementById("output-area").style.display = "block";
-        
+
         const qrDiv = document.getElementById("qrcode");
         qrDiv.innerHTML = "";
-        new QRCode(qrDiv, { text: generatedUrl, width: 280, height: 280 });
-        
-        // Scroll to output only if on mobile
+
+        // FIX: Added CorrectLevel to handle longer URLs and prevented overflow
+        try {
+          new QRCode(qrDiv, {
+            text: generatedUrl,
+            width: 280,
+            height: 280,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            // Level L (Low) allows the maximum amount of data (up to ~2,953 alphanumeric chars)
+            correctLevel: QRCode.CorrectLevel.L 
+          });
+        } catch (err) {
+          console.error("QR Generation Error:", err);
+          alert("The link is too long to generate a QR code. Try removing some items.");
+        }
+
         if (window.innerWidth < 720) window.scrollTo(0, document.body.scrollHeight);
       }
 
