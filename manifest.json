@@ -1,0 +1,17 @@
+{
+  "background_color": "#f8fafc",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Magic Link Creator",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Magic Link",
+  "start_url": "/SEHK-helper-tool/magic-link-creator.html",
+  "theme_color": "#f8fafc",
+  "id": "sehk.magic.link.creator",
+  "description": "Magic Link Creator for Samsung Online Store Hong Kong",
+  "categories": [
+    "productivity",
+    "shopping"
+  ]
+}
