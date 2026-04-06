@@ -519,21 +519,28 @@
           const val = (e.target.value || "").toLowerCase();
           suggBox.innerHTML = "";
           if (!val) { suggBox.style.display = "none"; return; }
-          const matches = productFeed.filter((p) => (p.name || "").toLowerCase().includes(val)).slice(0, 30);
+          const searchTerms = val.split(" ").filter(term => term.length > 0);
+      
+          const matches = productFeed.filter((p) => {
+            const name = (p.name || "").toLowerCase();
+            return searchTerms.every(term => name.includes(term));
+          }).slice(0, 30);
+      
           matches.forEach((m) => {
             const item = document.createElement("div");
-            item.className = "suggestion-item";
+            item.className = 'suggestion-item';
             item.innerText = m.name;
-            item.onclick = () => {
+            item.addEventListener('click', () => {
               input.value = m.name;
               input.dataset.sku = m.sku;
               suggBox.style.display = "none";
-            };
+            });
             suggBox.appendChild(item);
           });
           suggBox.style.display = matches.length ? "block" : "none";
         });
       }
+
 
       function generateLink() {
         const baseUrl = "https://www.samsung.com/hk/offer/magic/";
