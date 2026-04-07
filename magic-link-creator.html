@@ -1,36 +1,30 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="manifest" href="manifest.json">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Samsung HK Magic Link Creator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <style>
       :root {
         --primary: #006bea;
         --bg: #f8fafc;
-        --border: #e2e8f0;
+        --bg2: rgba(0,0,20,0.05);
+        --border: #d2d8e0;
         --error: #ef4444;
         --secondary: #64748b;
       }
+
       body {
         font-family: Helvetica, Arial, sans-serif;
         background: var(--bg);
         display: flex;
         justify-content: center;
-        padding: 0;
         margin: 0;
+        padding: 0 30px;
       }
+
       .container {
-        width: 740px;
-        background: var(--bg);
-        padding: 0;
-        /*border-radius: 12px;*/
-        /*box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);*/
       }
 
       .header {
@@ -49,7 +43,7 @@
         font-size: 1.5rem;
         color: #1e293b;
         font-weight: bold;
-        font-family: SamsungSharpSans, "Samsung Sharp Sans", "Poppins", Arial, Helvetica, san-seris;
+        font-family: SamsungSharpSans, "Samsung Sharp Sans", Arial, Helvetica, san-seris;
       }
 
       .tabs {
@@ -57,7 +51,7 @@
         gap: 4px;
         margin-bottom: 16px;
         background: #f1f5f9;
-        padding: 8px;
+        padding: 12px;
         border-radius: 8px;
       }
       .tab {
@@ -65,7 +59,7 @@
         text-align: center;
         padding: 8px;
         font-size: 14px;
-        font-weight: 400;
+        font-weight: 600;
         cursor: pointer;
         border-radius: 6px;
         color: var(--secondary);
@@ -73,9 +67,8 @@
       .tab.active {
         background: white;
         color: var(--primary);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
       }
-
       .btn-clear {
         background: #white;
         color: var(--primary);
@@ -102,10 +95,15 @@
       label {
         flex: 1;
         display: block;
+        padding: 4px 2px;
+      }
+
+      label,
+      #input-table thead {
         font-size: 12px;
         font-weight: 700;
-        padding: 4px 2px;
         color: var(--secondary);
+        white-space: nowrap;
       }
 
       table {
@@ -124,7 +122,11 @@
         border: 1px solid var(--border);
         border-radius: 6px;
         box-sizing: border-box;
-        font-size: 16px;
+        font-size: 14px;
+      }
+
+      .flex0 {
+        flex: 0;
       }
 
       /* Autocomplete Styles */
@@ -139,7 +141,7 @@
         background: white;
         border: 1px solid var(--border);
         z-index: 10;
-        max-height: 150px;
+        max-height: 250px;
         overflow-y: auto;
         border-radius: 0 0 6px 6px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -147,9 +149,14 @@
       }
       .suggestion-item {
         padding: 8px 10px;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
         border-bottom: 1px solid #f1f5f9;
+      }
+      .suggestion-item.active {
+        background: #e2e8f0; /* Light blue/gray highlight */
+        color: var(--primary);
+        outline: none;
       }
       .suggestion-item:hover {
         background: #f8fafc;
@@ -160,16 +167,19 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        margin-top: 16px;
         margin-bottom: 8px;
         font-size: 13px;
         cursor: pointer;
       }
+
       .checkbox-group input {
         width: 16px;
         height: 16px;
       }
 
       .checkbox-group label:hover {
+        cursor: pointer;
         color: --var(--primary);
       }
 
@@ -180,7 +190,7 @@
         color: white;
         border: none;
         border-radius: 8px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
         margin-top: 10px;
@@ -190,7 +200,10 @@
         display: none;
         text-align: center;
         padding-bottom: 60px;
+        padding-left: 10px;
+        padding-right: 10px;
       }
+
       #qrcode {
         display: flex;
         justify-content: center;
@@ -198,6 +211,18 @@
         background: white;
         border: 1px solid var(--border);
         border-radius: 6px;
+      }
+
+      #qrcode canvas {
+        display: block;
+        margin: 0 auto;
+        max-width: 100%;
+        height: auto !important;
+      }
+
+      #qrcode img {
+        display: block;
+        margin: 0 auto;
       }
       .action-grid {
         display: grid;
@@ -216,7 +241,7 @@
         border: none;
         padding: 14px;
         border-radius: 6px;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
       }
       .btn-out {
@@ -226,7 +251,7 @@
         border: 1px solid var(--primary);
         padding: 14px;
         border-radius: 6px;
-        font-size: 16px;
+        font-size: 14px;
         cursor: pointer;
       }
 
@@ -243,7 +268,9 @@
 
       .responsive-container {
         display: flex;
-        gap: 16px;
+        width: 98vw;
+        max-width: 800px;
+        gap: 0;
         justify-content: center;
         flex-wrap: wrap;
       }
@@ -251,23 +278,40 @@
       #form-area,
       #output-area {
         flex: 1;
-        max-width: 360px;
+        min-width: 340px;
         transition: all 0.5s;
         padding-left: 16px;
         padding-right: 16px;
       }
 
+      .toggle-container {
+        color: var(--secondary);
+        transition: color 0.2s;
+        user-select: none;
+        font-size: 11px; 
+        display: flex; 
+        align-items: 
+        center; cursor: pointer;
+      }
+
+      #voucher-mode-toggle {
+        width: 14px;
+        height: 14px;
+        margin-left: 10px;
+        margin-right: 5px;
+      }
+
+      .toggle-container:hover {
+        color: --var(--primary);
+      }
+
+      .voucher-code {
+        padding: 10px;
+        background: var(--bg2);
+        border-radius: 6px;
+      }
+
       @media screen and (max-width: 719px) {
-        .container {
-          width: 90vw;
-        }
-
-        #form-area,
-        #output-area {
-          flex: 1;
-          max-width: 100%;
-        }
-
         #create-button,
         #action-primary {
           position: sticky;
@@ -277,353 +321,512 @@
       }
 
       @media screen and (min-width: 720px) {
+        #form-area,
+        #output-area {
+          max-width: 50%;
+        }
         #output-area {
           margin-top: 90px;
         }
       }
-
-      /* New Wrapper for SKU/Product + Delete Button */
-      .sku-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-
-      .sku-input, .prod-search {
-        padding-right: 35px !important; /* Make room for the X */
-      }
-
-      /* The Inline X Button */
-      .btn-inline-del {
-        position: absolute;
-        right: 5px;
-        background: #e2e8f0;
-        color: #64748b;
-        border: none;
-        border-radius: 4px;
-        width: 22px;
-        height: 22px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        display: none; /* Hidden by default */
-        align-items: center;
-        justify-content: center;
-        z-index: 5;
-        transition: all 0.2s;
-      }
-
-      .sku-wrapper:hover .btn-inline-del {
-        display: flex; /* Show on hover */
-      }
-
-      .btn-inline-del:hover {
-        background: var(--error);
-        color: white;
-      }
-
-      /* Ensure suggestions don't get blocked by the button */
-      .search-container {
-        width: 100%;
-      }
     </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="responsive-container">
-        <div id="form-area">
-          <div class="header">
-            <h1>Magic Link Creator</h1>
-            <button class="btn btn-clear" onclick="clearAll()">Reset</button>
+</head>
+<body>
+  <div class="container">
+    <div class="responsive-container">
+      <div id="form-area">
+        <div class="header">
+          <h1>Magic Link Creator</h1>
+          <button class="btn btn-clear" id="reset-btn">Reset</button>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" id="tab-sku">By SKU</div>
+          <div class="tab" id="tab-product">By Product</div>
+        </div>
+
+        <div class="section">
+          <table id="input-table">
+            <thead>
+              <tr>
+                <th id="input-label">SKU ID (Paste with line breaks)</th>
+                <th style="width: 60px">QTY</th>
+              </tr>
+            </thead>
+            <tbody id="input-body"></tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <label>Store</label>
+          <select id="store">
+            <option value="B2C">B2C (Default)</option>
+            <option value="EPP">EPP</option>
+            <option value="SPP">SPP</option>
+            <option value="EA">EA</option>
+          </select>
+
+
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+              <label class="flex0">(Optional) Voucher Code</label>
+              <label class="toggle-container">
+                <input type="checkbox" id="voucher-mode-toggle"> 
+                Test Code Lookup
+              </label>
+            </div>
+
+            <div class="search-container">
+              <input type="text" id="voucher-search" placeholder="Enter voucher code..." data-code="">
+              <div class="suggestions" id="voucher-suggestions"></div>
+            </div>
+
+            <div id="voucher-code-display" class="voucher-code" style="margin-top: 6px; display: none;">
+              Code: <span id="selected-code-val" style="font-family: monospace; font-size: 110%; font-weight: bold; 
+              color: var(--primary);"></span>
+            </div>
           </div>
 
-          <div class="tabs">
-            <div class="tab active" id="tab-sku" onclick="switchTab('sku')">By SKU</div>
-            <div class="tab" id="tab-product" onclick="switchTab('product')">By Product</div>
+          <label style="margin-top: 12px">(Optional) URL if unavailable</label>
+          <input type="text" id="oos" placeholder="www.samsung.com/hk/" />
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="app" /> 
+            <label for="app">Add to Shop App</label>
           </div>
 
-          <div class="section">
-            <table id="input-table">
-              <thead>
-                <tr>
-                  <th style="text-align: left; font-size: 12px; color: #64748b; padding: 0 2px;" id="input-label">
-                    SKU ID (Paste with line breaks)
-                  </th>
-                  <th style="width: 60px; font-size: 12px; color: #64748b">QTY</th>
-                </tr>
-              </thead>
-              <tbody id="input-body"></tbody>
-            </table>
-          </div>
-
-          <div class="section">
-            <label>Store</label>
-
-            <select id="store">
-              <option value="B2C">B2C (Default)</option>
-              <option value="EPP">EPP</option>
-              <option value="SPP">SPP</option>
-              <option value="EA">EA</option>
-            </select>
-
-            <label style="margin-top: 12px">(Optional) Add voucher code</label>
-            <input type="text" id="voucher" placeholder="Voucher Code" />
-
-            <label style="margin-top: 12px">(Optional) URL if unavailable</label>
-            <input type="text" id="oos" placeholder="www.samsung.com/hk/" />
-
-            <br><br>
-
-            <div class="checkbox-group"><input type="checkbox" id="app" /> <label for="app">Add to Shop App</label></div>
-            <div class="checkbox-group"><input type="checkbox" id="newCart" /> <label for="newCart">New Cart</label></div>
-          </div>
-
-          <div id="create-button">
-            <button id="create-button-inner" class="btn btn-out" onclick="generateLink()">Create Magic Link</button>
+          <div class="checkbox-group">
+            <input type="checkbox" id="newCart" /> 
+            <label for="newCart">New Cart</label>
           </div>
         </div>
 
-        <div id="output-area">
-          <div id="qrcode"></div>
+        <div id="create-button">
+          <button class="btn btn-out" id="generate-btn">Create Magic Link</button>
+        </div>
+      </div>
 
-          <div id="action-primary" class="action-grid">
-            <button class="btn btn-main" onclick="openLink()">Open Magic Link</button>
-          </div>
-
-          <div class="action-grid">
-            <button class="btn btn-out" onclick="copyLink()">Copy to Clipboard</button>
-            <button class="btn btn-sec" onclick="downloadQR()">Save QR</button>
-          </div>
+      <div id="output-area">
+        <div id="qrcode"></div>
+        <div class="action-grid">
+          <button class="btn btn-main" id="open-btn">Open Magic Link</button>
+          <button class="btn btn-out" id="copy-btn">Copy to Clipboard</button>
+          <button class="btn btn-sec" id="save-btn">Save QR</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <script>
-      const CONFIG = {
-        // Use your export link here
-        CSV_PATH: "https://docs.google.com/spreadsheets/d/15m5NHSKLkzI01HIXxuWoi8DHtCZyzXR_W77GtrttblU/export?format=csv&gid=156800451",
-        WHITELIST: ["samsung.com"]
-      };
+<script>
+// Configuration
+const CONFIG = {
+  // Use your export link here
+  CSV_PATH: "https://docs.google.com/spreadsheets/d/15m5NHSKLkzI01HIXxuWoi8DHtCZyzXR_W77GtrttblU/export?format=csv&gid=156800451",
+  VOUCHER_CSV_PATH: "https://docs.google.com/spreadsheets/d/1JpAxYIhnL8z0WBLdtGkwP6kuD3G1c4U9r6K_HJwMmQM/export?format=csv&gid=843431320&range=B:C",
+  WHITELIST: ["samsung.com"]
+};
 
-      let productFeed = [];
-      let currentMode = "sku";
-      const inputBody = document.getElementById("input-body");
-      let generatedUrl = "";
+let productFeed = [];
+let voucherFeed = [];
+let currentMode = "sku";
+let generatedUrl = "";
 
-      // Load Data Feed from local CSV
-      async function loadFeed() {
-        try {
-          const response = await fetch(CONFIG.CSV_PATH);
-          if (!response.ok) throw new Error("Failed to reach Google Sheet. Check sharing permissions.");
-          
-          const csvText = await response.text();
-          const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
-          
-          productFeed = rows.map(line => {
-            // Regex to handle commas inside quotes (standard for GSheets CSV exports)
-            const columns = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-            if (columns && columns.length >= 2) {
-              return {
-                sku: columns[0].replace(/"/g, "").trim(),
-                name: columns[1].trim().replace(/^"|"$/g, "")
-              };
-            }
-            return null;
-          }).filter(item => item !== null);
+// Selectors
+const inputBody = document.getElementById("input-body");
+const outputArea = document.getElementById("output-area");
+const createBtnWrap = document.getElementById("create-button");
+const voucherToggle = document.getElementById('voucher-mode-toggle');
+const voucherInput = document.getElementById('voucher-search');
+const voucherDisplay = document.getElementById('voucher-code-display');
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  loadFeed();
+  loadVoucherFeed();
+  setupVoucherLookup();
+  switchTab('sku');
+
+  // Event Listeners
+  document.getElementById('reset-btn').addEventListener('click', clearAll);
+  document.getElementById('tab-sku').addEventListener('click', () => switchTab('sku'));
+  document.getElementById('tab-product').addEventListener('click', () => switchTab('product'));
+  document.getElementById('generate-btn').addEventListener('click', generateLink);
+  document.getElementById('open-btn').addEventListener('click', () => window.open(generatedUrl, "_blank"));
+  document.getElementById('copy-btn').addEventListener('click', copyLink);
+  document.getElementById('save-btn').addEventListener('click', downloadQR);
+});
+
+voucherToggle.addEventListener('change', function() {
+  // Clear everything when switching modes
+  voucherInput.value = "";
+  voucherInput.dataset.code = "";
+  voucherDisplay.style.display = "none";
+  
+  if (this.checked) {
+    voucherInput.placeholder = "Search voucher name or code...";
+  } else {
+    voucherInput.placeholder = "Enter voucher code...";
+    // Close suggestions if they were open
+    document.getElementById("voucher-suggestions").style.display = "none";
+  }
+});
+
+async function loadFeed() {
+  try {
+    const response = await fetch(CONFIG.CSV_PATH);
+    if (!response.ok) throw new Error("Failed to reach Google Sheet. Check sharing permissions.");
+    
+    const csvText = await response.text();
+    const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+    
+    productFeed = rows.map(line => {
+      // Regex to handle commas inside quotes (standard for GSheets CSV exports)
+      const columns = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+      if (columns && columns.length >= 2) {
+        return {
+          sku: columns[0].replace(/"/g, "").trim(),
+          name: columns[1].trim().replace(/^"|"$/g, "")
+        };
+      }
+      return null;
+    }).filter(item => item !== null);
+
+    console.log("Google Sheet CSV loaded:", productFeed.length, "items");
+  } catch (e) {
+    console.error("Error loading CSV feed:", e);
+  }
+}
+
+async function loadVoucherFeed() {
+  try {
+    const response = await fetch(CONFIG.VOUCHER_CSV_PATH);
+    if (!response.ok) throw new Error("Failed to reach Voucher Sheet.");
+    
+    const csvText = await response.text();
+    const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+    
+    voucherFeed = rows.map(line => {
+      // Fix: Regex now correctly captures full strings like "PA HR (eDM)"
+      const columns = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
       
-          console.log("Google Sheet CSV loaded:", productFeed.length, "items");
-        } catch (e) {
-          console.error("Error loading CSV feed:", e);
-        }
+      // Index 1 = Column B, Index 2 = Column C
+      if (columns && columns.length >= 2) {
+        return {
+          name: columns[0].replace(/^"|"$/g, "").trim(),
+          code: columns[1].replace(/^"|"$/g, "").trim()
+        };
       }
+      return null;
+    }).filter(item => item !== null);
+  } catch (e) { console.error("Voucher Feed error:", e); }
+}
 
-      function switchTab(mode) {
-        currentMode = mode;
-        document.getElementById("tab-sku").classList.toggle("active", mode === "sku");
-        document.getElementById("tab-product").classList.toggle("active", mode === "product");
-        document.getElementById("input-label").innerText = mode === "sku" ? "SKU ID (Paste with line breaks)" : "PRODUCT NAME";
-        inputBody.innerHTML = "";
-        mode === "sku" ? addRow() : Array.from({length: 6}).forEach(() => addRow());
+function switchTab(mode) {
+  currentMode = mode;
+  document.getElementById("tab-sku").classList.toggle("active", mode === "sku");
+  document.getElementById("tab-product").classList.toggle("active", mode === "product");
+  document.getElementById("input-label").innerText = mode === "sku" ? "SKU ID (Paste with line breaks)" : "PRODUCT NAME";
+  inputBody.innerHTML = "";
+  mode === "sku" ? addRow() : Array.from({length: 6}).forEach(() => addRow());
+}
+
+function addRow(sku = "", qty = 1, productName = "") {
+  if (inputBody.children.length >= 12) return;
+  const row = document.createElement("tr");
+  if (currentMode === "sku") {
+    row.innerHTML = `<td><input type="text" class="sku-input" placeholder="Enter SKU" value="${sku}"></td>
+                     <td><input type="number" class="qty-input" value="${qty}" min="1"></td>`;
+    setupSkuEvents(row);
+  } else {
+    row.innerHTML = `<td class="search-container"><input type="text" class="prod-search" placeholder="Search..." value="${productName}" data-sku="${sku}"><div class="suggestions"></div></td>
+                     <td><input type="number" class="qty-input" value="${qty}" min="1"></td>`;
+    setupProductEvents(row);
+  }
+  inputBody.appendChild(row);
+}
+
+function setupSkuEvents(row) {
+  const input = row.querySelector(".sku-input");
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); addRow(); inputBody.lastElementChild.querySelector(".sku-input").focus(); }
+  });
+  input.addEventListener("paste", (e) => {
+    const lines = (e.clipboardData || window.clipboardData).getData("text").split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length > 1) {
+      e.preventDefault();
+      lines.forEach((l) => addRow(l.trim()));
+      if (input.value === "") row.remove();
+    }
+  });
+}
+
+let currentProductFocus = -1; // Independent focus tracker for product rows
+
+function setupProductEvents(row) {
+  const input = row.querySelector(".prod-search");
+  const suggBox = row.querySelector(".suggestions");
+
+  input.addEventListener("keydown", function(e) {
+    let items = suggBox.getElementsByClassName("suggestion-item");
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault(); // Prevent cursor from moving
+      currentProductFocus++;
+      addActiveProduct(items);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      currentProductFocus--;
+      addActiveProduct(items);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (currentProductFocus > -1 && items[currentProductFocus]) {
+        items[currentProductFocus].click();
       }
+    } else if (e.key === "Escape") {
+      suggBox.style.display = "none";
+      currentProductFocus = -1;
+    }
+  });
 
-      function addRow(sku = "", qty = 1, productName = "") {
-        if (inputBody.children.length >= 12) return;
-        const row = document.createElement("tr");
+  input.addEventListener("input", (e) => {
+    const val = (e.target.value || "").toLowerCase();
+    suggBox.innerHTML = "";
+    currentProductFocus = -1; // Reset focus when typing
+    
+    if (!val) {
+      suggBox.style.display = "none";
+      return;
+    }
+
+    // Multi-string search logic
+    const searchTerms = val.split(" ").filter(term => term.length > 0);
+    const matches = productFeed.filter((p) => {
+      // Combine name and SKU for searching
+      const searchableString = `${p.name} ${p.sku}`.toLowerCase();
+      return searchTerms.every(term => searchableString.includes(term));
+    }).slice(0, 30);
+
+    matches.forEach((m) => {
+      const item = document.createElement("div");
+      item.className = "suggestion-item";
+      item.innerText = `${m.name} ${m.sku}`;
+      item.addEventListener("click", () => {
+        input.value = m.name;
+        input.dataset.sku = m.sku;
+        suggBox.style.display = "none";
+        currentProductFocus = -1;
+      });
+      suggBox.appendChild(item);
+    });
+
+    suggBox.style.display = matches.length ? "block" : "none";
+  });
+
+  // Close suggestions if clicking elsewhere
+  document.addEventListener("click", (e) => {
+    if (!row.contains(e.target)) {
+      suggBox.style.display = "none";
+      currentProductFocus = -1;
+    }
+  });
+}
+
+// Universal helper to manage the "active" class and scrolling
+function addActiveProduct(items) {
+  if (!items || items.length === 0) return false;
+  
+  // Remove existing active classes
+  Array.from(items).forEach(item => item.classList.remove("active"));
+  
+  // Wrap around logic
+  if (currentProductFocus >= items.length) currentProductFocus = 0;
+  if (currentProductFocus < 0) currentProductFocus = items.length - 1;
+  
+  const activeItem = items[currentProductFocus];
+  activeItem.classList.add("active");
+  
+  // Ensure the highlighted item is visible if the list scrolls
+  activeItem.scrollIntoView({ block: "nearest" });
+}
+
+let currentVoucherFocus = -1; // Track keyboard navigation index
+
+function setupVoucherLookup() {
+  const input = document.getElementById("voucher-search");
+  const suggBox = document.getElementById("voucher-suggestions");
+  const toggle = document.getElementById("voucher-mode-toggle");
+
+  input.addEventListener("keydown", function(e) {
+    let items = suggBox.getElementsByClassName("suggestion-item");
+    
+    if (e.key === "ArrowDown") {
+      currentVoucherFocus++;
+      addActiveVoucher(items);
+    } else if (e.key === "ArrowUp") {
+      currentVoucherFocus--;
+      addActiveVoucher(items);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (currentVoucherFocus > -1 && items[currentVoucherFocus]) {
+        items[currentVoucherFocus].click(); // Simulate click on the highlighted item
+      }
+    }
+  });
+
+  input.addEventListener("input", (e) => {
+    // ABORT if toggle is off (Manual Mode)
+    if (!toggle.checked) {
+      suggBox.style.display = "none";
+      input.dataset.code = "";
+      return; 
+    }
+
+    const val = (e.target.value || "").toLowerCase();
+    suggBox.innerHTML = "";
+    currentVoucherFocus = -1; // Reset focus on new input
+    
+    if (!val) { suggBox.style.display = "none"; return; }
+
+    const searchTerms = val.split(" ").filter(term => term.length > 0);
+    const matches = voucherFeed.filter((v) => {
+      // Combine name and code for searching
+      const searchableString = `${v.name} ${v.code}`.toLowerCase();
+      return searchTerms.every(term => searchableString.includes(term));
+    }).slice(0, 30);
+    
+    matches.forEach((m, index) => {
+      const item = document.createElement("div");
+      item.className = 'suggestion-item';
+      item.innerText = `${m.name} ${m.code}`;
+      item.addEventListener('click', () => {
+        input.value = m.name;
+        input.dataset.code = m.code;
+        suggBox.style.display = "none";
+        currentFocus = -1;
+
+        const displayArea = document.getElementById("voucher-code-display");
+        const codeSpan = document.getElementById("selected-code-val");
         
-        let inputHTML = currentMode === "sku" 
-          ? `<input type="text" class="sku-input" placeholder="Enter SKU" value="${sku}">`
-          : `<div class="search-container">
-               <input type="text" class="prod-search" placeholder="Search product..." value="${productName}" data-sku="${sku}">
-               <div class="suggestions"></div>
-             </div>`;
-
-        row.innerHTML = `
-          <td>
-            <div class="sku-wrapper">
-              ${inputHTML}
-              <button class="btn-inline-del" title="Remove row">×</button>
-            </div>
-          </td>
-          <td><input type="number" class="qty-input" value="${qty}" min="1"></td>
-        `;
-
-        // Delete Button Logic
-        row.querySelector(".btn-inline-del").addEventListener("click", () => {
-          if (inputBody.children.length > 1) { row.remove(); } 
-          else { clearRow(row); }
-        });
-
-        currentMode === "sku" ? setupSkuEvents(row) : setupProductEvents(row);
-        inputBody.appendChild(row);
-      }
-
-      function clearRow(row) {
-        const input = row.querySelector(".sku-input") || row.querySelector(".prod-search");
-        input.value = "";
-        if (input.dataset) input.dataset.sku = "";
-        row.querySelector(".qty-input").value = 1;
-      }
-
-      function setupSkuEvents(row) {
-        const input = row.querySelector(".sku-input");
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            addRow();
-            inputBody.lastElementChild.querySelector(".sku-input").focus();
-          }
-          // Auto-remove row on Backspace if empty
-          if (e.key === "Backspace" || e.key === "Delete") {
-            setTimeout(() => {
-              if (input.value === "" && inputBody.children.length > 1) {
-                row.remove();
-                inputBody.lastElementChild.querySelector(".sku-input").focus();
-              }
-            }, 0);
-          }
-        });
-        input.addEventListener("paste", (e) => {
-          const lines = (e.clipboardData || window.clipboardData).getData("text").split(/\r?\n/).filter((l) => l.trim());
-          if (lines.length > 1) {
-            e.preventDefault();
-            lines.forEach((l) => addRow(l.trim()));
-            if (input.value === "") row.remove();
-          }
-        });
-      }
-
-      function setupProductEvents(row) {
-        const input = row.querySelector(".prod-search");
-        const suggBox = row.querySelector(".suggestions");
-        input.addEventListener("input", (e) => {
-          const val = (e.target.value || "").toLowerCase();
-          suggBox.innerHTML = "";
-          if (!val) { suggBox.style.display = "none"; return; }
-          const searchTerms = val.split(" ").filter(term => term.length > 0);
-      
-          const matches = productFeed.filter((p) => {
-            const name = (p.name || "").toLowerCase();
-            return searchTerms.every(term => name.includes(term));
-          }).slice(0, 30);
-      
-          matches.forEach((m) => {
-            const item = document.createElement("div");
-            item.className = 'suggestion-item';
-            item.innerText = m.name;
-            item.addEventListener('click', () => {
-              input.value = m.name;
-              input.dataset.sku = m.sku;
-              suggBox.style.display = "none";
-            });
-            suggBox.appendChild(item);
-          });
-          suggBox.style.display = matches.length ? "block" : "none";
-        });
-      }
-
-
-      function generateLink() {
-        const baseUrl = "https://www.samsung.com/hk/offer/magic/";
-        const params = new URLSearchParams();
-        let count = 0;
-
-        inputBody.querySelectorAll("tr").forEach((row) => {
-          const input = currentMode === "sku" ? row.querySelector(".sku-input") : row.querySelector(".prod-search");
-          const sku = currentMode === "sku" ? input.value.trim() : input.dataset.sku;
-          if (sku) {
-            count++;
-            params.append(`productCode[${count}]`, sku);
-            params.append(`productQty[${count}]`, row.querySelector(".qty-input").value || 1);
-          }
-        });
-
-        if (count === 0) return alert("Select at least one product");
-
-        const store = document.getElementById("store").value;
-        if (store !== "B2C") params.append("store", store);
-        const v = document.getElementById("voucher").value.trim();
-        if (v) params.append("voucherCode", v);
-        const oos = document.getElementById("oos").value.trim();
-        if (oos) params.append("oosLink", oos);
-        if (document.getElementById("app").checked) params.append("app", "true");
-        if (document.getElementById("newCart").checked) params.append("newCart", "true");
-
-        generatedUrl = `${baseUrl}?${params.toString()}`;
-
-        // Regeneration Logic: Keep button visible but update text
-        document.getElementById("create-button-inner").textContent = "Update Magic Link";
-        document.getElementById("output-area").style.display = "block";
-
-        const qrDiv = document.getElementById("qrcode");
-        qrDiv.innerHTML = "";
-
-        // FIX: Added CorrectLevel to handle longer URLs and prevented overflow
-        try {
-          new QRCode(qrDiv, {
-            text: generatedUrl,
-            width: 280,
-            height: 280,
-            colorDark: "#000000",
-            colorLight: "#ffffff",
-            // Level L (Low) allows the maximum amount of data (up to ~2,953 alphanumeric chars)
-            correctLevel: QRCode.CorrectLevel.L 
-          });
-        } catch (err) {
-          console.error("QR Generation Error:", err);
-          alert("The link is too long to generate a QR code. Try removing some items.");
+        if (m.code) {
+          codeSpan.innerText = m.code;
+          displayArea.style.display = "block";
+        } else {
+          displayArea.style.display = "none";
         }
+      });
+      suggBox.appendChild(item);
+    });
+    suggBox.style.display = matches.length ? "block" : "none";
+  });
+}
 
-        if (window.innerWidth < 720) window.scrollTo(0, document.body.scrollHeight);
-      }
+// Helper function to manage the "active" class
+function addActiveVoucher(items) {
+  if (!items || items.length === 0) return false;
+  
+  // Remove active class from all items
+  Array.from(items).forEach(item => item.classList.remove("active"));
+  
+  // Loop focus
+  if (currentVoucherFocus >= items.length) currentVoucherFocus = 0;
+  if (currentVoucherFocus < 0) currentVoucherFocus = items.length - 1;
+  
+  // Add active class and ensure it's visible in scroll
+  items[currentVoucherFocus].classList.add("active");
+  items[currentVoucherFocus].scrollIntoView({ block: "nearest" });
+}
 
-      function clearAll() {
-        inputBody.innerHTML = "";
-        switchTab(currentMode);
-        document.getElementById("voucher").value = "";
-        document.getElementById("oos").value = "";
-        document.getElementById("output-area").style.display = "none";
-        document.getElementById("create-button-inner").textContent = "Create Magic Link";
-      }
+function generateLink() {
+  const baseUrl = "https://www.samsung.com/hk/offer/magic/";
+  const params = new URLSearchParams();
+  let count = 0;
+  inputBody.querySelectorAll("tr").forEach((row) => {
+    const sku = currentMode === "sku" ? row.querySelector(".sku-input").value.trim() : row.querySelector(".prod-search").dataset.sku || "";
+    if (sku) {
+      count++;
+      params.append(`productCode[${count}]`, sku);
+      params.append(`productQty[${count}]`, row.querySelector(".qty-input").value || 1);
+    }
+  });
+  if (count === 0) return alert("Select at least one product");
+  const store = document.getElementById("store").value;
+  if (store !== "B2C") params.append("store", store);
 
-      function openLink() { window.open(generatedUrl, "_blank"); }
-      function copyLink() { navigator.clipboard.writeText(generatedUrl); alert("Copied"); }
-      function downloadQR() {
-        const img = document.querySelector("#qrcode img");
-        if (!img) return;
-        const link = document.createElement("a");
-        link.download = "magic-qr.png";
-        link.href = img.src;
-        link.click();
-      }
+  const vToggle = document.getElementById("voucher-mode-toggle");
+  const vInput = document.getElementById("voucher-search");
 
-      loadFeed();
-      switchTab("sku");
-      
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('Service Worker registered', reg))
-          .catch(err => console.error('Service Worker registration failed', err));
-      }
-    </script>
-  </body>
+  const vCode = vToggle.checked ? vInput.dataset.code : vInput.value.trim();
+  if (vCode) params.append("voucherCode", vCode);
+
+  const oos = document.getElementById("oos").value.trim();
+  if (oos) params.append("oosLink", oos);
+  if (document.getElementById("app").checked) params.append('app', 'true');
+  if (document.getElementById("newCart").checked) params.append('newCart', 'true');
+  generatedUrl = `${baseUrl}?${params.toString()}`;
+    
+  // 1. Show the area first so the library can calculate dimensions
+  outputArea.style.display = "block";
+  createBtnWrap.style.display = "block";
+
+  const qrDiv = document.getElementById("qrcode");
+  qrDiv.innerHTML = "";
+
+  // 2. Generate the QR code
+  try {
+    new QRCode(qrDiv, {
+      text: generatedUrl,
+      width: 260,
+      height: 260,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+
+    // 3. Force scroll to top of output for the user
+    window.scrollTo(0, 0);
+  } catch (err) {
+    console.error("QR Generation Error:", err);
+  }
+}
+
+function clearAll() {
+  inputBody.innerHTML = "";
+  switchTab(currentMode);
+  document.getElementById("voucher").value = "";
+  document.getElementById("oos").value = "";
+  outputArea.style.display = "none";
+  createBtnWrap.style.display = "block";
+
+  const vInput = document.getElementById("voucher-search");
+  vInput.value = "";
+  vInput.dataset.code = "";
+
+  document.getElementById("voucher-code-display").style.display = "none";
+  document.getElementById("selected-code-val").innerText = "";
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(generatedUrl);
+  alert("Copied");
+}
+
+function downloadQR() {
+  const img = document.querySelector("#qrcode img");
+  if (!img || !img.src) {
+    alert("Please create a link first.");
+    return;
+  }
+
+  // Use Chrome's download API instead of a hidden link
+  chrome.downloads.download({
+    url: img.src,
+    filename: "magic-qr.png",
+    saveAs: true
+  }, (downloadId) => {
+    if (chrome.runtime.lastError) {
+      console.error("Download failed:", chrome.runtime.lastError);
+    }
+  });
+}
+</script>
+
+</body>
 </html>
