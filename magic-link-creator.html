@@ -452,7 +452,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-product').addEventListener('click', () => switchTab('product'));
   document.getElementById('generate-btn').addEventListener('click', generateLink);
   document.getElementById('open-btn').addEventListener('click', () => {
-    window.open(generatedUrl, "_system");
+      const a = document.createElement('a');
+      a.href = generatedUrl;
+      // 'noopener' and 'noreferrer' help signal an external context
+      a.rel = 'noopener noreferrer'; 
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
   });
   document.getElementById('copy-btn').addEventListener('click', copyLink);
   document.getElementById('save-btn').addEventListener('click', downloadQR);
