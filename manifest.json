@@ -4,7 +4,7 @@
   "display": "standalone",
   "name": "Magic Link Creator",
   "orientation": "any",
-  "scope": "/",
+  "scope": "/whatever",
   "short_name": "Magic Link",
   "start_url": "/SEHK-helper-tool/magic-link-creator.html",
   "theme_color": "#f8fafc",
