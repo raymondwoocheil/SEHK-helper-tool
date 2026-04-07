@@ -451,7 +451,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-sku').addEventListener('click', () => switchTab('sku'));
   document.getElementById('tab-product').addEventListener('click', () => switchTab('product'));
   document.getElementById('generate-btn').addEventListener('click', generateLink);
-  document.getElementById('open-btn').addEventListener('click', () => window.open(generatedUrl, "_blank"));
+  document.getElementById('open-btn').addEventListener('click', () => {
+    window.open(generatedUrl, "_system");
+  });
   document.getElementById('copy-btn').addEventListener('click', copyLink);
   document.getElementById('save-btn').addEventListener('click', downloadQR);
 });
