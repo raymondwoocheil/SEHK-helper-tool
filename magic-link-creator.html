@@ -377,7 +377,7 @@
           <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
               <label class="flex0">(Optional) Voucher Code</label>
-              <label class="toggle-container">
+              <label id="voucher-toggle-wrapper" class="toggle-container" style="display: none;">
                 <input type="checkbox" id="voucher-mode-toggle"> 
                 Test Code Lookup
               </label>
@@ -452,6 +452,15 @@ document.addEventListener('DOMContentLoaded', () => {
   loadVoucherFeed();
   setupVoucherLookup();
   switchTab('sku');
+
+  // Check URL Parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('testcode') === 'true') {
+    const toggleWrapper = document.getElementById('voucher-toggle-wrapper');
+    if (toggleWrapper) {
+      toggleWrapper.style.display = 'flex';
+    }
+  }
 
   // Event Listeners
   document.getElementById('reset-btn').addEventListener('click', clearAll);
