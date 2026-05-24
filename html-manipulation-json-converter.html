@@ -1,0 +1,688 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Manipulation V2 - CSV/TSV to JSON Config Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            max-height: 50vh;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        .button-group {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>HTML Manipulation - CSV/TSV to JSON Config Converter</h1>
+    
+    <h3>Step 1: Input CSV or TSV</h3>
+    <textarea id="inputData" placeholder="Paste your CSV (comma-separated) or TSV (tab-separated) here..."></textarea>
+    
+    <div class="button-group">
+        <button onclick="downloadExampleCsv()">Download Example CSV Template</button>
+        <button onclick="convertToJson('csv')">Convert CSV to JSON</button>
+        <button onclick="convertToJson('tsv')">Convert TSV to JSON</button>
+    </div>
+
+    <span id="copyFeedback" style="margin-left: 10px; color: green;"></span>
+    
+    <h3>Step 2: Output JSON</h3>
+    <div class="button-group">
+        <button id="copyButton" onclick="copyToClipboard('#jsonOutput')" disabled>Copy to Clipboard</button>
+        <button id="downloadButton" onclick="downloadJson()" disabled>Download JSON</button>
+    </div>
+    <pre id="jsonOutput"></pre>
+
+    <h3>JS Insert</h3>
+    <div class="button-group">
+        <button onclick="copyToClipboard('#jsInsert')">Copy to Clipboard</button>
+    </div>
+    <pre id="jsInsert"><code>var MATCH_CONFIG = {
+    useExactMatch: true,
+    caseSensitive: true
+};
+
+function manipulateHtml(config, pollInterval, maxAttempts, delayStart, clickDelay) {
+    var pInterval = pollInterval || 500;
+    var mAttempts = maxAttempts || 50;
+    var dStart = delayStart || 0;
+    var cDelay = clickDelay || 500;
+    var isModifying = false;
+
+    var getHKTime = function() {
+        var now = new Date();
+        var hkOffset = 8 * 60;
+        return new Date(now.getTime() + (hkOffset * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    };
+
+    var textMatches = function(elementText, searchText, useExact) {
+        var elText = (elementText || "").trim();
+        var sText = (searchText || "").trim();
+        var isExact = typeof useExact !== "undefined" ? useExact : MATCH_CONFIG.useExactMatch;
+        if (!MATCH_CONFIG.caseSensitive) {
+            elText = elText.toLowerCase();
+            sText = sText.toLowerCase();
+        }
+        return isExact ? elText === sText : elText.indexOf(sText) !== -1;
+    };
+
+    var mergeStyles = function(existingStyle, newStyle) {
+        var existing = existingStyle || "";
+        var added = (newStyle || "").replace(/;+$/, "").trim();
+        if (!existing) return added + (added && !added.match(/!important/) ? " !important;" : ";");
+        var styleObj = {};
+        var pairs = (existing + ";" + added).split(";");
+        for (var i = 0; i < pairs.length; i++) {
+            var p = pairs[i].split(":");
+            if (p.length === 2) {
+                var key = p[0].trim();
+                var val = p[1].trim();
+                if (val && val.indexOf("!important") === -1) val += " !important";
+                styleObj[key] = val;
+            }
+        }
+        var res = "";
+        for (var k in styleObj) {
+            if (Object.prototype.hasOwnProperty.call(styleObj, k)) res += k + ": " + styleObj[k] + "; ";
+        }
+        return res.trim();
+    };
+
+    var runManipulation = function(replacement) {
+        if (isModifying) return false;
+        var $els = $(replacement.target);
+        if ($els.length === 0) return false;
+
+        var appliedCount = 0;
+        $els.each(function() {
+            var $t = $(this);
+            var currentText = $t.text();
+            var currentHtml = $t.html();
+            
+            if (replacement.withTextLabel && !textMatches(currentText, replacement.withTextLabel, replacement.useExactMatch)) {
+                return;
+            }
+
+            var h = replacement.replaceWithHtml;
+            
+            // Avoid infinite loops by checking if change is already present
+            if (replacement.manipulationMethod === "textReplace") {
+                if (currentHtml.indexOf(h) !== -1) return;
+            } else if (replacement.manipulationMethod === "replace" || !replacement.manipulationMethod) {
+                if (currentHtml === h) return;
+            }
+
+            isModifying = true;
+            appliedCount++;
+            
+            try {
+                switch (replacement.manipulationMethod) {
+                    case "textReplace":
+                        var find = replacement.withTextLabel;
+                        if (find && currentHtml.indexOf(find) !== -1) {
+                            $t.html(currentHtml.replace(new RegExp(find, 'g'), h));
+                        }
+                        break;
+                    case "append": $t.append(h); break;
+                    case "prepend": $t.prepend(h); break;
+                    case "before": $t.before(h); break;
+                    case "after": $t.after(h); break;
+                    case "replace": $t.html(h); break;
+                    case "replaceElement": $t.replaceWith(h); break;
+                    case "hide": $t.attr("style", mergeStyles($t.attr("style"), "display: none !important")); break;
+                    case "show": $t.attr("style", mergeStyles($t.attr("style"), "display: block !important")); break;
+                    case "addStyle": $t.attr("style", mergeStyles($t.attr("style"), h)); break;
+                    case "addClass": $t.addClass(h); break;
+                    case "removeClass": $t.removeClass(h); break;
+                    case "addAttribute": 
+                        var parts = h.split("=");
+                        if (parts.length >= 2) $t.attr(parts[0], parts.slice(1).join("="));
+                        break;
+                    case "removeAttribute": $t.removeAttr(h); break;
+                    default: $t.html(h);
+                }
+            } finally {
+                isModifying = false;
+            }
+        });
+        return appliedCount > 0;
+    };
+
+    var applyAll = function() {
+        if (!config || !config.replacements || isModifying) return;
+        var hkTime = getHKTime();
+        var currentHref = window.location.href;
+
+        for (var i = 0; i < config.replacements.length; i++) {
+            var rep = config.replacements[i];
+            var start = rep.activationStart ? new Date(rep.activationStart) : null;
+            var end = rep.activationEnd ? new Date(rep.activationEnd) : null;
+            var isActive = (!start || hkTime >= start) && (!end || hkTime <= end);
+            
+            if (isActive && (!rep.hrefIncludes || currentHref.indexOf(rep.hrefIncludes) !== -1)) {
+                runManipulation(rep);
+            }
+        }
+    };
+
+    // Extra Measure 1: Deep MutationObserver
+    if (typeof window.MutationObserver !== "undefined") {
+        var observer = new MutationObserver(function() {
+            if (!isModifying) applyAll();
+        });
+        observer.observe(document.body, { 
+            childList: true, 
+            subtree: true, 
+            attributes: true, 
+            characterData: true 
+        });
+    }
+
+    // Extra Measure 2: requestAnimationFrame loop for near-instant override
+    var forceOverride = function() {
+        if (!isModifying) applyAll();
+        requestAnimationFrame(forceOverride);
+    };
+
+    forceOverride();
+
+    // Extra Measure 3: Event Listeners
+    $(document).on("click mouseup keyup", function() { 
+        setTimeout(applyAll, 50); 
+    });
+
+    if (dStart > 0) {
+        setTimeout(applyAll, dStart);
+    } else {
+        applyAll();
+    }
+}
+
+var config = {
+  "replacements": [
+  ]
+};
+
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    manipulateHtml(config, 500, 5, 0, 500);
+} else {
+    document.addEventListener("DOMContentLoaded", function() {
+        manipulateHtml(config, 500, 5, 0, 500);
+    });
+}
+    </code></pre>
+
+    <div style="margin-top: 300px;">v2</div>
+    <pre id="jsInsert-v2"><code>
+var MATCH_CONFIG = {
+    useExactMatch: true,
+    caseSensitive: true
+};
+
+function manipulateHtml(config, pollInterval, maxAttempts, delayStart, clickDelay) {
+    var pInterval = pollInterval || 500;
+    var mAttempts = maxAttempts || 50;
+    var dStart = delayStart || 0;
+    var cDelay = clickDelay || 500;
+
+    var getHKTime = function() {
+        var now = new Date();
+        var hkOffset = 8 * 60;
+        return new Date(now.getTime() + (hkOffset * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    };
+
+    var textMatches = function(elementText, searchText) {
+        var elText = (elementText || "").trim();
+        var sText = searchText || "";
+        if (!MATCH_CONFIG.caseSensitive) {
+            elText = elText.toLowerCase();
+            sText = sText.toLowerCase();
+        }
+        return MATCH_CONFIG.useExactMatch ? elText === sText : elText.indexOf(sText) !== -1;
+    };
+
+    var mergeStyles = function(existingStyle, newStyle) {
+        var existing = existingStyle || "";
+        var added = (newStyle || "").replace(/;+$/, "").trim();
+        if (!existing) {
+            return added + (added && added.slice(-1) !== ";" ? ";" : "");
+        }
+        var styleObj = {};
+        var pairs = (existing + ";" + added).split(";");
+        for (var i = 0; i < pairs.length; i++) {
+            var p = pairs[i].split(":");
+            if (p.length === 2) {
+                styleObj[p[0].trim()] = p[1].trim();
+            }
+        }
+        var res = "";
+        for (var k in styleObj) {
+            if (Object.prototype.hasOwnProperty.call(styleObj, k)) {
+                res += k + ": " + styleObj[k] + "; ";
+            }
+        }
+        return res.trim();
+    };
+
+    var removeStyles = function(existingStyle, propertiesToRemove) {
+        var existing = existingStyle || "";
+        if (!existing) return "";
+        var styleObj = {};
+        var pairs = existing.split(";");
+        for (var i = 0; i < pairs.length; i++) {
+            var p = pairs[i].split(":");
+            if (p.length === 2) {
+                styleObj[p[0].trim()] = p[1].trim();
+            }
+        }
+        var toRemove = (propertiesToRemove || "").split(";");
+        for (var j = 0; j < toRemove.length; j++) {
+            var key = toRemove[j].trim();
+            if (key) delete styleObj[key];
+        }
+        var res = "";
+        for (var k in styleObj) {
+            if (Object.prototype.hasOwnProperty.call(styleObj, k)) {
+                res += k + ": " + styleObj[k] + "; ";
+            }
+        }
+        return res.trim();
+    };
+
+    var runManipulation = function(replacement) {
+        var $els = $(replacement.target);
+        if ($els.length === 0) return false;
+
+        var appliedCount = 0;
+        $els.each(function() {
+            var $t = $(this);
+            if (replacement.withTextLabel && !textMatches($t.text(), replacement.withTextLabel)) {
+                return;
+            }
+
+            appliedCount++;
+            var h = replacement.replaceWithHtml;
+            switch (replacement.manipulationMethod) {
+                case "append": $t.append(h); break;
+                case "prepend": $t.prepend(h); break;
+                case "before": $t.before(h); break;
+                case "after": $t.after(h); break;
+                case "replace": $t.html(h); break;
+                case "replaceElement": $t.replaceWith(h); break;
+                case "hide": $t.attr("style", mergeStyles($t.attr("style"), "display: none !important")); break;
+                case "show": $t.attr("style", mergeStyles($t.attr("style"), "display: block")); break;
+                case "addStyle": $t.attr("style", mergeStyles($t.attr("style"), h)); break;
+                case "removeStyle": $t.attr("style", removeStyles($t.attr("style"), h)); break;
+                case "addClass": $t.addClass(h); break;
+                case "removeClass": $t.removeClass(h); break;
+                case "addAttribute": 
+                    var parts = h.split("=");
+                    if (parts.length >= 2) $t.attr(parts[0], parts.slice(1).join("="));
+                    break;
+                case "removeAttribute": $t.removeAttr(h); break;
+                default: $t.html(h);
+            }
+        });
+        return appliedCount > 0;
+    };
+
+    var startPolling = function(rep) {
+        var attempts = 0;
+        var poll = function() {
+            var success = runManipulation(rep);
+            if (!success && attempts < mAttempts) {
+                attempts++;
+                setTimeout(poll, pInterval);
+            }
+        };
+        poll();
+    };
+
+    var applyAll = function() {
+        if (!config || !config.replacements) return;
+        var hkTime = getHKTime();
+        var currentHref = window.location.href;
+
+        for (var i = 0; i < config.replacements.length; i++) {
+            var replacement = config.replacements[i];
+            var start = replacement.activationStart ? new Date(replacement.activationStart) : null;
+            var end = replacement.activationEnd ? new Date(replacement.activationEnd) : null;
+            var isActive = (!start || hkTime >= start) && (!end || hkTime <= end);
+            
+            if (isActive && (!replacement.hrefIncludes || currentHref.indexOf(replacement.hrefIncludes) !== -1)) {
+                startPolling(replacement);
+            }
+        }
+    };
+
+    var debounceTimer;
+    var triggerUpdate = function() {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(applyAll, cDelay);
+    };
+
+    if (typeof window.MutationObserver !== "undefined") {
+        var observer = new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                if (mutations[i].addedNodes && mutations[i].addedNodes.length > 0) {
+                    triggerUpdate();
+                    break;
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    $(document).on("click", triggerUpdate);
+
+    if (dStart > 0) {
+        setTimeout(applyAll, dStart);
+    } else {
+        applyAll();
+    }
+}
+
+var config = {
+    replacements: []
+};
+
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    manipulateHtml(config, 500, 50, 0, 500);
+} else {
+    document.addEventListener("DOMContentLoaded", function() {
+        manipulateHtml(config, 500, 50, 0, 500);
+    });
+}
+    </code></pre>
+
+    <div>v1</div>
+    <pre id="jsInsert-v1"><code>
+// Global configuration for matching behavior
+const MATCH_CONFIG = {
+    useExactMatch: true,
+    caseSensitive: true
+};
+
+// Assumes jQuery is loaded
+function manipulateHtml(config, pollInterval = 500, maxAttempts = 50, delayStart = 2000, clickDelay = 1000) {
+    // Get current time in Hong Kong (UTC+8)
+    const getHKTime = () => {
+        const now = new Date();
+        const hkOffset = 8 * 60;
+        return new Date(now.getTime() + (hkOffset * 60 * 1000) + (now.getTimezoneOffset() * 60 * 1000));
+    };
+
+    // Helper function to compare text based on global config
+    const textMatches = (elementText, searchText) => {
+        let elText = elementText.trim();
+        let sText = searchText;
+
+        if (!MATCH_CONFIG.caseSensitive) {
+            elText = elText.toLowerCase();
+            sText = sText.toLowerCase();
+        }
+
+        return MATCH_CONFIG.useExactMatch ? elText === sText : elText.includes(sText);
+    };
+
+    // Helper function to merge styles intelligently
+    const mergeStyles = (existingStyle = '', newStyle) => {
+        newStyle = newStyle.replace(/;+$/, '').trim();
+        
+        if (!existingStyle) {
+            return newStyle + (newStyle.endsWith(';') ? '' : ';');
+        }
+
+        const styleObj = {};
+        existingStyle.split(';').forEach(style => {
+            const [prop, value] = style.split(':').map(s => s.trim());
+            if (prop && value) styleObj[prop] = value;
+        });
+
+        newStyle.split(';').forEach(style => {
+            const [prop, value] = style.split(':').map(s => s.trim());
+            if (prop && value) styleObj[prop] = value;
+        });
+
+        return Object.entries(styleObj)
+            .map(([prop, value]) => `${prop}: ${value}`)
+            .join(';') + ';';
+    };
+
+    // Helper function to remove specific style properties
+    const removeStyles = (existingStyle = '', propertiesToRemove) => {
+        if (!existingStyle) return '';
+
+        const styleObj = {};
+        existingStyle.split(';').forEach(style => {
+            const [prop, value] = style.split(':').map(s => s.trim());
+            if (prop && value) styleObj[prop] = value;
+        });
+
+        // Remove specified properties
+        propertiesToRemove.split(';').forEach(prop => {
+            delete styleObj[prop.trim()];
+        });
+
+        // Convert back to string, handle empty case
+        const result = Object.entries(styleObj)
+            .map(([prop, value]) => `${prop}: ${value}`)
+            .join(';');
+        
+        return result ? result + ';' : '';
+    };
+
+    // Core manipulation function
+    const applyManipulations = () => {
+        const hkTime = getHKTime();
+        
+        config.replacements.forEach(replacement => {
+            const startTime = replacement.activationStart ? new Date(replacement.activationStart) : null;
+            const endTime = replacement.activationEnd ? new Date(replacement.activationEnd) : null;
+            const isActive = (!startTime || hkTime >= startTime) && (!endTime || hkTime <= endTime);
+            
+            if (!isActive || !window.location.href.includes(replacement.hrefIncludes)) return;
+
+            let attempts = 0;
+
+            const applyManipulation = ($elements) => {
+                console.log(`Applying "${replacement.manipulationMethod}" to "${replacement.target}"`);
+                $elements.each((index, element) => {
+                    const $target = $(element);
+                    
+                    if (replacement.withTextLabel && !textMatches($target.text(), replacement.withTextLabel)) {
+                        return;
+                    }
+
+                    switch (replacement.manipulationMethod) {
+                        case 'append':
+                            $target.append(replacement.replaceWithHtml);
+                            break;
+                        case 'prepend':
+                            $target.prepend(replacement.replaceWithHtml);
+                            break;
+                        case 'before':
+                            $target.before(replacement.replaceWithHtml);
+                            break;
+                        case 'after':
+                            $target.after(replacement.replaceWithHtml);
+                            break;
+                        case 'replace':
+                            $target.html(replacement.replaceWithHtml);
+                            break;
+                        case 'replaceElement':
+                            $target.replaceWith(replacement.replaceWithHtml);
+                            break;
+                        case 'hide':
+                            $target.attr('style', mergeStyles($target.attr('style'), 'display: none !important'));
+                            break;
+                        case 'show':
+                            $target.attr('style', mergeStyles($target.attr('style'), 'display: block'));
+                            break;
+                        case 'addStyle':
+                            $target.attr('style', mergeStyles($target.attr('style'), replacement.replaceWithHtml));
+                            break;
+                        case 'removeStyle':
+                            $target.attr('style', removeStyles($target.attr('style'), replacement.replaceWithHtml));
+                            break;
+                        case 'addClass':
+                            $target.addClass(replacement.replaceWithHtml);
+                            break;
+                        case 'removeClass':
+                            $target.removeClass(replacement.replaceWithHtml);
+                            break;
+                        case 'addAttribute':
+                            $target.attr(replacement.replaceWithHtml.split('=')[0], replacement.replaceWithHtml.split('=')[1]);
+                            break;
+                        case 'removeAttribute':
+                            $target.removeAttr(replacement.replaceWithHtml);
+                            break;
+                        default:
+                            $target.html(replacement.replaceWithHtml);
+                    }
+                });
+            };
+
+            const pollForElement = () => {
+                const $elements = $(replacement.target);
+                if ($elements.length > 0) {
+                    const $matchingElements = $elements.filter((_, el) => 
+                        !replacement.withTextLabel || textMatches($(el).text(), replacement.withTextLabel)
+                    );
+                    
+                    if ($matchingElements.length > 0) {
+                        applyManipulation($matchingElements);
+                    } else if (attempts < maxAttempts - 1) {
+                        attempts++;
+                        setTimeout(pollForElement, pollInterval);
+                    }
+                } else if (attempts < maxAttempts - 1) {
+                    attempts++;
+                    setTimeout(pollForElement, pollInterval);
+                }
+            };
+
+            pollForElement();
+        });
+    };
+
+    setTimeout(() => {
+        applyManipulations();
+    }, delayStart);
+
+    let clickTimeout;
+    $(document).on('click', () => {
+        clearTimeout(clickTimeout);
+        clickTimeout = setTimeout(() => {
+            console.log('Applying manipulations after click delay');
+            applyManipulations();
+        }, clickDelay);
+    });
+}
+
+// Example usage:
+const config = {
+};
+
+manipulateHtml(config, 500, 50, 2000, 1000);
+    </code></pre>
+
+
+
+
+
+
+    <script>
+        function parseData(input, delimiter) {
+            const lines = input.trim().split('\n');
+            const headers = lines[0].split(delimiter).map(h => h.trim());
+            const result = { replacements: [] };
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(delimiter).map(v => v.trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                result.replacements.push(obj);
+            }
+            return result;
+        }
+
+        function convertToJson(type) {
+            const input = document.getElementById('inputData').value.trim();
+            if (!input) {
+                alert('Please paste some CSV or TSV data first!');
+                return;
+            }
+
+            const delimiter = type === 'csv' ? ',' : '\t';
+            const config = parseData(input, delimiter);
+            const jsonString = JSON.stringify(config, null, 2);
+            
+            // Update JSON output
+            document.getElementById('jsonOutput').textContent = jsonString;
+
+            // Enable buttons
+            document.getElementById('copyButton').disabled = false;
+            document.getElementById('downloadButton').disabled = false;
+        }
+
+        function copyToClipboard(selector) {
+            const content = document.querySelector(selector).textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.textContent = 'Copied to clipboard!';
+                setTimeout(() => feedback.textContent = '', 2000);
+            });
+        }
+
+        function downloadJson() {
+            const jsonContent = document.getElementById('jsonOutput').textContent;
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadExampleCsv() {
+            const exampleCsv = `hrefIncludes,target,withTextLabel,replaceWithHtml,manipulationMethod,activationStart,activationEnd
+/hk/,.pd-buying-price__cta,Out of stock,Coming soon,replace,2025-03-01T00:00:00+08:00,2025-03-31T23:59:59+08:00`;
+            const blob = new Blob([exampleCsv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'example_config.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
