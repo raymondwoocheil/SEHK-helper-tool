@@ -1,0 +1,232 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSV to JSON Converter for Catalog Update API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #outputJson {
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #error {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TSV to JSON Converter for Catalog Update API</h1>
+        <div class="input-group">
+            <label for="inputTsv">Input TSV (with headers: item_id, category, locale, image_url, name, url, in_stock, currency, price, discount, original_price, product_attributes):</label>
+            <textarea id="inputTsv" placeholder="Paste your TSV here (e.g., item_id\tcategory\tlocale\timage_url\tname\turl\tin_stock\tcurrency\tprice\tdiscount\toriginal_price\tproduct_attributes)"></textarea>
+        </div>
+        <div>
+            <button id="convertBtn" onclick="convertTsvToJson()">Convert to JSON</button>
+        </div>
+        <div>
+            <label for="outputJson">Output JSON:</label>
+            <textarea id="outputJson" readonly></textarea>
+        </div>
+        <div>
+            <button id="copyBtn" onclick="copyToClipboard()" disabled>Copy to Clipboard</button>
+        </div>
+        <div id="error"></div>
+    </div>
+
+    <script>
+        function convertTsvToJson() {
+            const inputTsv = document.getElementById('inputTsv').value.trim();
+            const outputJson = document.getElementById('outputJson');
+            const errorDiv = document.getElementById('error');
+            const copyBtn = document.getElementById('copyBtn');
+
+            // Reset output and error
+            outputJson.value = '';
+            errorDiv.style.display = 'none';
+            copyBtn.disabled = true;
+
+            if (!inputTsv) {
+                showError('Please enter TSV data.');
+                return;
+            }
+
+            try {
+                // Split TSV into lines and filter out empty lines
+                const lines = inputTsv.split('\n').filter(line => line.trim() !== '');
+                if (lines.length < 1) {
+                    showError('TSV must have at least a header row.');
+                    return;
+                }
+
+                // Parse header
+                const headers = lines[0].split('\t').map(h => h.trim());
+                const expectedHeaders = ['item_id', 'category', 'locale', 'image_url', 'name', 'url', 'in_stock', 'currency', 'price', 'discount', 'original_price', 'product_attributes'];
+                if (!expectedHeaders.every((h, i) => headers[i] === h)) {
+                    showError('TSV must have headers: ' + expectedHeaders.join(', '));
+                    return;
+                }
+
+                // Parse rows (skip header)
+                const products = [];
+                for (let i = 1; i < lines.length; i++) {
+                    // Split row and pad with empty strings if fewer columns than headers
+                    const values = lines[i].split('\t').map(v => v ? v.trim() : '');
+                    while (values.length < headers.length) {
+                        values.push('');
+                    }
+
+                    // Parse categories
+                    const categories = values[1]
+                        ? values[1].split(',').map(c => c.trim().replace(/^"|"$/g, '')).filter(c => c)
+                        : [];
+
+                    // Parse product_attributes
+                    let productAttributes = {};
+                    try {
+                        if (values[11]) {
+                            // Remove trailing comma
+                            const cleanAttrString = values[11].replace(/,\s*$/, '');
+                            // Handle the string like '"key":"value","key":"value"'
+                            const attrString = '{' + cleanAttrString + '}';
+                            productAttributes = JSON.parse(attrString.replace(/(\w+):/g, '"$1":'));
+                        }
+                    } catch (e) {
+                        showError(`Invalid product_attributes JSON at row ${i + 1}: ${e.message}`);
+                        return;
+                    }
+
+                    // Build product object, excluding empty fields
+                    const currency = values[7] || 'USD';
+                    const product = {};
+
+                    if (values[0]) product.item_id = values[0];
+                    if (categories.length > 0) product.category = categories;
+                    if (values[2]) product.locale = values[2];
+                    if (values[3]) product.image_url = values[3];
+                    if (values[4]) product.name = values[4];
+                    if (values[5]) product.url = values[5];
+                    if (values[6]) product.in_stock = parseInt(values[6], 10) || 0;
+                    if (values[8]) product.price = { [currency]: parseFloat(values[8]) || 0 };
+                    if (values[9]) product.discount = { [currency]: parseFloat(values[9]) || 0 };
+                    if (values[10]) product.original_price = { [currency]: parseFloat(values[10]) || 0 };
+                    if (Object.keys(productAttributes).length > 0) product.product_attributes = productAttributes;
+
+                    // Only add product if it has at least one field
+                    if (Object.keys(product).length > 0) {
+                        products.push(product);
+                    }
+                }
+
+                // Output formatted JSON
+                outputJson.value = JSON.stringify(products, null, 2);
+                copyBtn.disabled = false;
+            } catch (e) {
+                showError(`Error processing TSV: ${e.message}`);
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function copyToClipboard() {
+            const outputJson = document.getElementById('outputJson').value;
+            navigator.clipboard.writeText(outputJson).then(() => {
+                alert('JSON copied to clipboard!');
+            }).catch(err => {
+                showError('Failed to copy to clipboard: ' + err.message);
+            });
+        }
+    </script>
+</body>
+</html>
