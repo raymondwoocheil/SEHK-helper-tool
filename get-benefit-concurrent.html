@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<!-- saved from url=(0064)https://raymondwoocheil.w3spaces.com/get-benefit-concurrent.html -->
+<html data-kantu="1"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <title>Benefits Grabber</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Helvetica;
+            display: flex;
+            justify-content: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+        }
+        h1 {
+            margin: 0;
+            text-align: center;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: #ddd;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        select {
+            padding: 5px;
+        }
+        .input-section {
+            margin: 20px 0;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        #progress {
+            margin: 10px 0;
+            display: none;
+            text-align: center;
+        }
+        #stats {
+            margin: 10px 0;
+            text-align: center;
+        }
+        #errorLog {
+            margin: 10px 0;
+            color: red;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Benefits Grabber using Hybris Public Product Offer API</h1>
+        <div class="input-section">
+            <label for="skuInput">Paste TSV/CSV here (one SKU per line or comma/tab-separated):</label><br>
+            <textarea id="skuInput" placeholder="e.g., SKU1,SKU2,SKU3 or SKU1\tSKU2\tSKU3" data-sharkid="__0"></textarea>
+        </div>
+        <div class="input-section">
+            <label for="skuFile">Or upload CSV/TSV file:</label><br>
+            <input type="file" id="skuFile" accept=".csv, .txt">
+        </div>
+        <div class="controls">
+            <select id="storeSelect" data-sharkid="__1">
+                <option value="hk">B2C Chinese</option>
+                <option value="hk_en">B2C English</option>
+                <option value="hkeducation">SPP</option>
+                <option value="samsunghkem">EPP</option>
+                <option value="hkses">EA</option>
+                <option value="hkevent">Event</option>
+                <option value="samsunghkvip">VIP</option>
+            </select>
+            <select id="langSelect" data-sharkid="__2">
+                <option value="">Chinese</option>
+                <option value="&amp;lang=en_HK">English</option>
+            </select>
+            <select id="delaySelect" data-sharkid="__3">
+                <option value="0">0ms</option>
+                <option value="25">25ms</option>
+                <option value="50">50ms</option>
+                <option value="100">100ms</option>
+                <option value="200">200ms</option>
+                <option value="300" selected="">300ms</option>
+                <option value="500">500ms</option>
+                <option value="1000">1000ms</option>
+            </select>
+            <select id="concurrencySelect" data-sharkid="__4">
+                <option value="1">1 Concurrent</option>
+                <option value="3">3 Concurrent</option>
+                <option value="5">5 Concurrent</option>
+                <option value="10" selected="">10 Concurrent</option>
+                <option value="20">20 Concurrent</option>
+            </select>
+            <button id="startBtn" disabled="">START</button>
+            <button id="clearBtn">CLEAR</button>
+            <button id="exportCombinedBtn" style="display: none;">Export Combined CSV</button>
+            <button id="exportSplitBtn" style="display: none;">Export Split CSV</button>
+            <button id="copyTSVBtn" style="display: none;">Copy as TSV</button>
+        </div>
+        <div id="progress"></div>
+        <div id="stats"></div>
+        <div id="errorLog"></div>
+        <div id="tableContainer"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const BASE_DOMAIN = 'https://p1-sms-api-cdn.shop.samsung.com/tokocommercewebservices/v2/';
+        const ENDPOINT_SUFFIX = '/offers?fields=SIMPLE_INFO';
+
+        // Store results and SKUs
+        let results = [];
+        let skusToFetch = [];
+        let startTime;
+        let successCount = 0;
+        let failCount = 0;
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        // DOM elements
+        const startBtn = document.getElementById('startBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportCombinedBtn = document.getElementById('exportCombinedBtn');
+        const exportSplitBtn = document.getElementById('exportSplitBtn');
+        const copyTSVBtn = document.getElementById('copyTSVBtn');
+        const storeSelect = document.getElementById('storeSelect');
+        const langSelect = document.getElementById('langSelect');
+        const delaySelect = document.getElementById('delaySelect');
+        const concurrencySelect = document.getElementById('concurrencySelect');
+        const skuFileInput = document.getElementById('skuFile');
+        const skuInput = document.getElementById('skuInput');
+        const progressDiv = document.getElementById('progress');
+        const statsDiv = document.getElementById('stats');
+        const errorLogDiv = document.getElementById('errorLog');
+        const tableContainer = document.getElementById('tableContainer');
+
+        // Helper function to sanitize strings for CSV/TSV output
+        function sanitizeForOutput(str) {
+            if (str == null) return ''; // Handle null/undefined
+            // Convert to string, remove newlines, and normalize spaces
+            return String(str)
+                .replace(/[\n\r]+/g, ' ') // Replace newlines with space
+                .replace(/\t/g, ' ')      // Replace tabs with space for TSV safety
+                .replace(/"/g, '""')      // Escape double quotes for CSV
+                .trim();                  // Remove leading/trailing spaces
+        }
+
+        // Handle file upload
+        skuFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    processInputText(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Handle textarea input
+        skuInput.addEventListener('input', (event) => {
+            processInputText(event.target.value);
+        });
+
+        // Process input text (from file or textarea)
+        function processInputText(text) {
+            skusToFetch = [];
+            if (!text) {
+                startBtn.disabled = true;
+                return;
+            }
+            const lines = text.split('\n').map(line => line.trimEnd());
+            if (lines.some(line => line.includes('\t'))) {
+                skusToFetch = lines.map(line => sanitizeForOutput(line.split('\t')[0]) || '');
+            } else if (lines.some(line => line.includes(','))) {
+                skusToFetch = lines.map(line => sanitizeForOutput(line.split(',')[0]) || '');
+            } else {
+                skusToFetch = lines.map(line => sanitizeForOutput(line));
+            }
+            startBtn.disabled = skusToFetch.length === 0;
+        }
+
+        // Fetch data for a single SKU
+        async function fetchSkuData(sku) {
+            if (!sku) {
+                return { sku: '', offerTexts: [''], code: '', startDate: '', endDate: '', url: '' };
+            }
+
+            const storeCode = storeSelect.value;
+            const langParameter = langSelect.value;
+            // Added cache-buster using current timestamp to ensure latest version from CDN/API
+            const cacheBuster = `&_cb=${Date.now()}`;
+            const url = `${BASE_DOMAIN}${storeCode}/products/${sku}${ENDPOINT_SUFFIX}${langParameter}${cacheBuster}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                successCount++;
+                return processSkuData(sku, data, url);
+            } catch (error) {
+                console.error(`Error fetching data for SKU ${sku}:`, error);
+                failCount++;
+                errorLogDiv.style.display = 'block';
+                errorLogDiv.innerHTML += `SKU ${sku}: ${error.message}<br>`;
+                return { sku, offerTexts: [`Error: ${error.message}`], code: 'N/A', startDate: 'N/A', endDate: 'N/A', url };
+            }
+        }
+
+        // Process JSON data and extract all fields
+        function processSkuData(sku, data, url) {
+            if (!data.benefits || !Array.isArray(data.benefits)) {
+                return { sku, offerTexts: ['No benefits found'], code: 'N/A', startDate: 'N/A', endDate: 'N/A', url };
+            }
+
+            const decodeHtmlEntities = (str) => {
+                const entities = {
+                    '&nbsp;': ' ',
+                    '&amp;': '&',
+                    '&lt;': '<',
+                    '&gt;': '>',
+                    '&quot;': '"',
+                    '&#39;': "'",
+                    '&trade;': ' '
+                };
+                return str
+                    .replace(/\\"/g, '"') // Replace escaped quotes with normal quotes
+                    .replace(/&[a-zA-Z0-9#]+;/g, (match) => entities[match] || match);
+            };
+
+            const offerTexts = data.benefits
+                .filter(benefit => benefit.description || benefit.title || benefit.offerText)
+                .map(benefit => {
+                    const parts = [];
+                    if (benefit.title) {
+                        parts.push(decodeHtmlEntities(sanitizeForOutput(benefit.title)).replace(/merchandising text/gi, '').trim());
+                    }
+                    if (benefit.offerText) {
+                        parts.push(decodeHtmlEntities(sanitizeForOutput(benefit.offerText)).replace(/merchandising text/gi, '').trim());
+                    } else if (benefit.description) {
+                        parts.push(decodeHtmlEntities(sanitizeForOutput(benefit.description)).replace(/merchandising text/gi, '').trim());
+                    }
+                    return parts.join(' ');
+                });
+            const codes = data.benefits
+                .filter(benefit => benefit.code)
+                .map(benefit => sanitizeForOutput(benefit.code))
+                .join('; ');
+            const startDates = data.benefits
+                .filter(benefit => benefit.startDate)
+                .map(benefit => sanitizeForOutput(benefit.startDate))
+                .join('; ');
+            const endDates = data.benefits
+                .filter(benefit => benefit.endDate)
+                .map(benefit => sanitizeForOutput(benefit.endDate))
+                .join('; ');
+
+            return {
+                sku,
+                offerTexts: offerTexts.length > 0 ? offerTexts : ['No offerTexts available'],
+                code: codes || 'N/A',
+                startDate: startDates || 'N/A',
+                endDate: endDates || 'N/A',
+                url
+            };
+        }
+
+        // Delay function for rate limiting between batches
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Format time in seconds with 2 decimal places
+        function formatTime(ms) {
+            return (ms / 1000).toFixed(2) + 's';
+        }
+
+        // Update progress display with elapsed time
+        function updateProgress(completed, total) {
+            const percentage = Math.round((completed / total) * 100);
+            const elapsedTime = Date.now() - startTime;
+            progressDiv.textContent = `Progress: ${completed}/${total} (${percentage}%) - Elapsed: ${formatTime(elapsedTime)}`;
+            statsDiv.textContent = `Success: ${successCount} | Failed: ${failCount}`;
+        }
+
+        // Fetch all SKUs with concurrency
+        async function fetchAllSkus() {
+            results = [];
+            successCount = 0;
+            failCount = 0;
+            startBtn.disabled = true;
+            clearBtn.disabled = true;
+            exportCombinedBtn.style.display = 'none';
+            exportSplitBtn.style.display = 'none';
+            copyTSVBtn.style.display = 'none';
+            progressDiv.style.display = 'block';
+            tableContainer.innerHTML = '';
+            errorLogDiv.innerHTML = '';
+            errorLogDiv.style.display = 'none';
+            startTime = Date.now();
+
+            const totalSkus = skusToFetch.length;
+            const concurrencyLimit = parseInt(concurrencySelect.value, 10);
+            const requestDelay = parseInt(delaySelect.value, 10);
+            let completed = 0;
+
+            async function processBatch(batch) {
+                const promises = batch.map(sku => fetchSkuData(sku));
+                const batchResults = await Promise.all(promises);
+                results.push(...batchResults);
+                completed += batch.length;
+                updateProgress(completed, totalSkus);
+            }
+
+            for (let i = 0; i < totalSkus; i += concurrencyLimit) {
+                const batch = skusToFetch.slice(i, i + concurrencyLimit);
+                await processBatch(batch);
+                if (i + concurrencyLimit < totalSkus) {
+                    await delay(requestDelay);
+                }
+            }
+
+            const totalTime = Date.now() - startTime;
+            progressDiv.textContent = `Completed: ${totalSkus}/${totalSkus} (100%) - Total time: ${formatTime(totalTime)}`;
+            renderTable();
+            startBtn.disabled = false;
+            clearBtn.disabled = false;
+            exportCombinedBtn.style.display = 'inline';
+            exportSplitBtn.style.display = 'inline';
+            copyTSVBtn.style.display = 'inline';
+        }
+
+        // Render the table with sorting capability
+        function renderTable() {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable('sku')">SKU</th>
+                            <th onclick="sortTable('offerText')">Benefits Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            const sortedResults = [...results];
+            if (sortColumn) {
+                sortedResults.sort((a, b) => {
+                    const valueA = sortColumn === 'sku' ? a.sku : a.offerTexts.join('; ');
+                    const valueB = sortColumn === 'sku' ? b.sku : b.offerTexts.join('; ');
+                    return sortDirection === 'asc' 
+                        ? valueA.localeCompare(valueB) 
+                        : valueB.localeCompare(valueA);
+                });
+            }
+
+            sortedResults.forEach(result => {
+                const combinedDescription = result.offerTexts.join('; ');
+                html += `
+                    <tr>
+                        <td>${result.sku || ''}</td>
+                        <td>${combinedDescription || ''}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            tableContainer.innerHTML = html;
+        }
+
+        // Sort table function
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            renderTable();
+        }
+
+        // Clear everything
+        function clearAll() {
+            results = [];
+            skusToFetch = [];
+            successCount = 0;
+            failCount = 0;
+            sortColumn = null;
+            sortDirection = 'asc';
+            startBtn.disabled = true;
+            clearBtn.disabled = false;
+            exportCombinedBtn.style.display = 'none';
+            exportSplitBtn.style.display = 'none';
+            copyTSVBtn.style.display = 'none';
+            progressDiv.style.display = 'none';
+            statsDiv.textContent = '';
+            errorLogDiv.innerHTML = '';
+            errorLogDiv.style.display = 'none';
+            tableContainer.innerHTML = '';
+            skuFileInput.value = '';
+            skuInput.value = '';
+        }
+
+        // Format timestamp as yyyymmddhhmm in local timezone
+        function getTimestamp() {
+            const now = new Date(startTime);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${year}${month}${day}${hours}${minutes}`;
+        }
+
+        // Export combined CSV with all fields
+        function exportCombinedCSV() {
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += 'SKU,Benefits Description,Code,Start Date,End Date,API URL\n';
+
+            results.forEach(result => {
+                const sku = sanitizeForOutput(result.sku);
+                const offerText = sanitizeForOutput(result.offerTexts.join('; '));
+                const code = sanitizeForOutput(result.code);
+                const startDate = sanitizeForOutput(result.startDate);
+                const endDate = sanitizeForOutput(result.endDate);
+                const url = sanitizeForOutput(result.url);
+                csvContent += `"${sku}","${offerText}","${code}","${startDate}","${endDate}","${url}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `Get_benefits_${storeSelect.value}_${langSelect.selectedOptions[0].textContent}_${getTimestamp()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Export split CSV with separate offerText columns
+        function exportSplitCSV() {
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            const maxDescriptions = Math.max(...results.map(result => result.offerTexts.length));
+            let header = 'SKU';
+            for (let i = 1; i <= maxDescriptions; i++) {
+                header += `,Benefit Description ${i}`;
+            }
+            csvContent += header + '\n';
+
+            results.forEach(result => {
+                const sku = sanitizeForOutput(result.sku);
+                const offerTextColumns = result.offerTexts.map(desc => sanitizeForOutput(desc));
+                while (offerTextColumns.length < maxDescriptions) {
+                    offerTextColumns.push('');
+                }
+                csvContent += `"${sku}",${offerTextColumns.map(col => `"${col}"`).join(',')}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `Get_benefits_split_${storeSelect.value}_${langSelect.selectedOptions[0].textContent}_${getTimestamp()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Copy results as TSV to clipboard
+        function copyToTSV() {
+            let tsvContent = '';
+            //'SKU\tBenefits Description\tCode\tStart Date\tEnd Date\tAPI URL\n';
+
+            results.forEach(result => {
+                const sku = sanitizeForOutput(result.sku).replace(/\t/g, ' ');
+                const offerText = sanitizeForOutput(result.offerTexts.join('; ')).replace(/\t/g, ' ');
+                const code = sanitizeForOutput(result.code).replace(/\t/g, ' ');
+                const startDate = sanitizeForOutput(result.startDate).replace(/\t/g, ' ');
+                const endDate = sanitizeForOutput(result.endDate).replace(/\t/g, ' ');
+                const url = sanitizeForOutput(result.url).replace(/\t/g, ' ');
+                tsvContent += `${sku}\t${offerText}\t${code}\t${startDate}\t${endDate}\t${url}\n`;
+            });
+
+            navigator.clipboard.writeText(tsvContent)
+                .then(() => {
+                    alert('TSV copied to clipboard!');
+                })
+                .catch(err => {
+                    console.error('Failed to copy TSV: ', err);
+                    alert('Failed to copy TSV to clipboard.');
+                });
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', fetchAllSkus);
+        clearBtn.addEventListener('click', clearAll);
+        exportCombinedBtn.addEventListener('click', exportCombinedCSV);
+        exportSplitBtn.addEventListener('click', exportSplitCSV);
+        copyTSVBtn.addEventListener('click', copyToTSV);
+    </script>
+
+</body></html>
