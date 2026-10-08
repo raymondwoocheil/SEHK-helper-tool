@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSV to JSON Converter for Catalog Ingest API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        #outputJson {
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #error {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>TSV to JSON Converter for Catalog Ingest API</h1>
+    <label for="inputTsv">Input TSV (with headers: item_id, category, locale, image_url, name, url, in_stock, currency, price, discount, original_price, product_attributes):</label><br>
+    <textarea id="inputTsv" placeholder="Paste your TSV here..."></textarea><br>
+    <button onclick="convertTsvToJson()">Convert to JSON</button><br>
+    <div>
+        <label for="outputJson">Output JSON:</label>
+        <textarea id="outputJson" readonly></textarea>
+    </div>
+    <button onclick="copyToClipboard()">Copy to Clipboard</button>
+    <div id="errorMessage"></div>
+
+    <script>
+        function convertTsvToJson() {
+            const inputTsv = document.getElementById('inputTsv').value.trim();
+            const outputDiv = document.getElementById('outputJson');
+            const errorDiv = document.getElementById('errorMessage');
+
+            // Clear previous output and errors
+            outputDiv.textContent = '';
+            errorDiv.textContent = '';
+
+            if (!inputTsv) {
+                errorDiv.textContent = 'Error: Please provide TSV data.';
+                return;
+            }
+
+            // Split input into rows
+            const rows = inputTsv.split('\n').map(row => row.trim()).filter(row => row);
+            if (rows.length < 1) {
+                errorDiv.textContent = 'Error: TSV must contain at least a header row.';
+                return;
+            }
+
+            // Define expected headers
+            const headers = ['item_id', 'category', 'locale', 'image_url', 'name', 'url', 'in_stock', 'currency', 'price', 'discount', 'original_price', 'product_attributes'];
+            const expectedColumnCount = headers.length;
+
+            // Validate header row
+            const headerRow = rows[0].split('\t').map(col => col.trim());
+            if (headerRow.length !== expectedColumnCount || !headers.every((h, i) => h === headerRow[i])) {
+                errorDiv.textContent = 'Error: Header row must exactly match: ' + headers.join(', ');
+                return;
+            }
+
+            // Parse data rows
+            const jsonOutput = [];
+            for (let i = 1; i < rows.length; i++) {
+                const columns = rows[i].split('\t').map(col => col.trim());
+                // Allow fewer columns, padding with empty strings
+                while (columns.length < expectedColumnCount) {
+                    columns.push('');
+                }
+
+                // Create JSON object for the row
+                const rowObject = {};
+                const currency = columns[headers.indexOf('currency')] || ''; // Store currency for price objects
+                headers.forEach((header, index) => {
+                    let value = columns[index] || ''; // Use empty string for missing values
+                    if (header === 'category') {
+                        // Parse category as an array
+                        if (value) {
+                            value = value.replace(/^\[|\]$/g, '').split(',').map(cat => cat.trim()).filter(cat => cat);
+                            if (value.length === 0) {
+                                value = [];
+                            }
+                        } else {
+                            value = [];
+                        }
+                    } else if (header === 'in_stock') {
+                        // Convert to numeric 1 or 0
+                        value = value.toLowerCase() === 'true' || value === '1' ? 1 : 0;
+                    } else if (header === 'price' || header === 'discount' || header === 'original_price') {
+                        // Convert to object with currency as key and numeric value
+                        value = {};
+                        value[currency] = value ? parseFloat(columns[index]) : null;
+                    } else if (header === 'product_attributes') {
+                        // Parse as JSON or default to empty object
+                        if (!value) {
+                            value = {};
+                        } else {
+                            try {
+                                value = JSON.parse(value);
+                            } catch (e) {
+                                errorDiv.textContent = `Error: Invalid JSON in product_attributes at row ${i + 1}.`;
+                                return;
+                            }
+                        }
+                    } else if (header !== 'currency') {
+                        // Keep as string, exclude currency field
+                        value = value || '';
+                    } else {
+                        // Skip currency field in output
+                        return;
+                    }
+                    rowObject[header] = value;
+                });
+                jsonOutput.push(rowObject);
+            }
+
+            // Display JSON output
+            outputDiv.textContent = JSON.stringify(jsonOutput, null, 2);
+        }
+
+        function copyToClipboard() {
+            const outputJson = document.getElementById('outputJson').textContent;
+            if (!outputJson) {
+                document.getElementById('errorMessage').textContent = 'Error: No JSON output to copy.';
+                return;
+            }
+            navigator.clipboard.writeText(outputJson).then(() => {
+                document.getElementById('errorMessage').textContent = 'JSON copied to clipboard!';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').textContent = '';
+                }, 2000);
+            }).catch(err => {
+                document.getElementById('errorMessage').textContent = 'Error: Failed to copy to clipboard.';
+            });
+        }
+    </script>
+</body>
+</html>
