@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TSV Cleaner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            resize: vertical;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+        }
+        #duplicateGroups {
+            margin-top: 20px;
+        }
+        .group {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .same {
+            background-color: #e6ffe6;
+        }
+        .diff {
+            background-color: #ffe6e6;
+        }
+        .selected-cell {
+            background-color: #fff3cd;
+            font-weight: bold;
+        }
+        td input[type="radio"] {
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        td.row-select {
+            background-color: #e8f0fe;
+            text-align: center;
+        }
+        td.cell-select {
+            padding-left: 15px;
+            position: relative;
+        }
+        td.cell-select::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background-color: #ddd;
+        }
+        #outputSection, #autoOutputSection {
+            margin-top: 20px;
+            display: none;
+        }
+        #outputSection.visible, #autoOutputSection.visible {
+            display: block;
+        }
+        #outputSection h3, #autoOutputSection h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .output-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>TSV Cleaner</h2>
+        <div class="input-section">
+            <label for="tsvInput">Paste TSV here:</label><br>
+            <textarea id="tsvInput" placeholder="Paste your TSV here..."></textarea>
+        </div>
+        <div class="controls">
+            <label for="keyColumn">Primary Key Column (0-based):</label>
+            <select id="keyColumn">
+                <option value="0">Column 0</option>
+                <option value="1">Column 1</option>
+                <option value="2">Column 2</option>
+                <option value="3">Column 3</option>
+                <option value="4">Column 4</option>
+            </select>
+            <label for="modeSelect">Mode:</label>
+            <select id="modeSelect">
+                <option value="manual">Manual Selection</option>
+                <option value="auto">Auto-Cleaned</option>
+            </select>
+            <button onclick="findDuplicates()">Process TSV</button>
+        </div>
+        <div id="duplicateGroups"></div>
+        <div id="outputSection">
+            <h3>Cleaned TSV (Manual Selection)</h3>
+            <div class="output-controls">
+                <button onclick="generateCleanTSV()">Confirm</button>
+                <button onclick="copyToClipboard('cleanTSV')">Copy to Clipboard</button>
+                <button onclick="downloadFile('tsv', 'cleanTSV')">Download as TSV</button>
+                <button onclick="downloadFile('csv', 'cleanTSV')">Download as CSV</button>
+            </div>
+            <textarea id="cleanTSV" readonly></textarea>
+        </div>
+        <div id="autoOutputSection">
+            <h3>Auto-Cleaned TSV (Last Duplicate Kept)</h3>
+            <div class="output-controls">
+                <button onclick="copyToClipboard('autoCleanTSV')">Copy to Clipboard</button>
+                <button onclick="downloadFile('csv', 'autoCleanTSV')">Download as CSV</button>
+            </div>
+            <textarea id="autoCleanTSV" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        let tsvData = [];
+        let selectedRows = new Map();
+        let autoSelectedRows = new Set();
+        let cellSelections = new Map(); // groupIndex -> { colIndex: rowIndex }
+
+        function parseTSV(tsvText) {
+            return tsvText.trim().split('\n').map(line => line.split('\t'));
+        }
+
+        function areRowsIdentical(rows) {
+            if (rows.length <= 1) return true;
+            const firstRow = rows[0].row;
+            return rows.every(entry => 
+                entry.row.length === firstRow.length && 
+                entry.row.every((cell, i) => cell === firstRow[i])
+            );
+        }
+
+        function findDuplicates() {
+            const tsvText = document.getElementById('tsvInput').value;
+            if (!tsvText) {
+                alert('Please paste a TSV first');
+                return;
+            }
+
+            const mode = document.getElementById('modeSelect').value;
+            tsvData = parseTSV(tsvText);
+            const keyColumn = parseInt(document.getElementById('keyColumn').value);
+            const groups = new Map();
+            selectedRows.clear();
+            autoSelectedRows.clear();
+            cellSelections.clear();
+
+            tsvData.forEach((row, index) => {
+                const key = row[keyColumn];
+                if (!groups.has(key)) {
+                    groups.set(key, []);
+                }
+                groups.get(key).push({ index, row });
+            });
+
+            const groupsDiv = document.getElementById('duplicateGroups');
+            const outputSection = document.getElementById('outputSection');
+            const autoOutputSection = document.getElementById('autoOutputSection');
+            groupsDiv.innerHTML = '';
+            outputSection.classList.remove('visible');
+            autoOutputSection.classList.remove('visible');
+
+            if (mode === 'auto') {
+                generateAutoCleanTSV();
+                autoOutputSection.classList.add('visible');
+                groupsDiv.innerHTML = '<p>Auto-cleaned TSV generated (last duplicate kept).</p>';
+                return;
+            }
+
+            // Manual mode
+            const duplicateGroups = Array.from(groups.values()).filter(group => group.length > 1);
+            const groupsToShow = duplicateGroups.filter(group => !areRowsIdentical(group));
+            const identicalGroups = duplicateGroups.filter(group => areRowsIdentical(group));
+
+            identicalGroups.forEach(group => {
+                autoSelectedRows.add(group[0].index);
+            });
+
+            if (duplicateGroups.length === 0) {
+                groupsDiv.innerHTML = '<p>No duplicates found</p>';
+                generateCleanTSV();
+                outputSection.classList.add('visible');
+                return;
+            }
+
+            if (groupsToShow.length === 0) {
+                groupsDiv.innerHTML = '<p>All duplicates have identical data - first rows auto-selected</p>';
+                generateCleanTSV();
+                outputSection.classList.add('visible');
+                return;
+            }
+
+            groupsToShow.forEach((group, groupIndex) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'group';
+                groupDiv.innerHTML = `<h3>Duplicate Group ${groupIndex + 1} (Key: ${group[0].row[keyColumn]})</h3>`;
+
+                let tableHTML = '<table><thead><tr><th>Select Row</th>';
+                tsvData[0].forEach((header, i) => tableHTML += `<th>${header || `Column ${i}`}</th>`);
+                tableHTML += '</tr></thead><tbody>';
+
+                group.forEach((entry, rowIndex) => {
+                    const isLastRow = rowIndex === group.length - 1;
+                    tableHTML += '<tr>';
+                    tableHTML += `<td class="row-select"><input type="radio" name="group${groupIndex}" value="${entry.index}" onchange="selectRow(${groupIndex}, ${entry.index})" ${isLastRow ? 'checked' : ''}></td>`;
+                    
+                    entry.row.forEach((cell, colIndex) => {
+                        const isSame = group.every(g => g.row[colIndex] === cell);
+                        tableHTML += `<td class="cell-select ${isSame ? 'same' : 'diff'}"><input type="radio" name="cell${groupIndex}_${colIndex}" value="${entry.index}" onchange="selectCell(${groupIndex}, ${colIndex}, ${entry.index})" ${isLastRow ? 'checked' : ''}> ${cell}</td>`;
+                    });
+                    tableHTML += '</tr>';
+                });
+
+                tableHTML += '</tbody></table>';
+                groupDiv.innerHTML += tableHTML;
+                groupsDiv.appendChild(groupDiv);
+
+                const lastRowIndex = group[group.length - 1].index;
+                selectedRows.set(groupIndex, lastRowIndex);
+                cellSelections.set(groupIndex, {});
+                selectRow(groupIndex, lastRowIndex);
+            });
+
+            outputSection.classList.add('visible');
+        }
+
+        function selectRow(groupIndex, rowIndex) {
+            selectedRows.set(groupIndex, rowIndex);
+            const group = tsvData.filter((_, idx) => idx === parseInt([...document.getElementsByName(`group${groupIndex}`)].find(r => r.checked).value))[0];
+            const cellSelection = cellSelections.get(groupIndex) || {};
+            group.forEach((_, colIndex) => {
+                if (!cellSelection[colIndex]) {
+                    cellSelection[colIndex] = rowIndex;
+                    const radio = document.querySelector(`input[name="cell${groupIndex}_${colIndex}"][value="${rowIndex}"]`);
+                    if (radio) radio.checked = true;
+                }
+            });
+            cellSelections.set(groupIndex, cellSelection);
+            updateCellHighlights(groupIndex);
+        }
+
+        function selectCell(groupIndex, colIndex, rowIndex) {
+            const cellSelection = cellSelections.get(groupIndex) || {};
+            cellSelection[colIndex] = rowIndex;
+            cellSelections.set(groupIndex, cellSelection);
+            updateCellHighlights(groupIndex);
+        }
+
+        function updateCellHighlights(groupIndex) {
+            const cellSelection = cellSelections.get(groupIndex) || {};
+            Object.entries(cellSelection).forEach(([colIndex, rowIndex]) => {
+                const cells = document.querySelectorAll(`td input[name="cell${groupIndex}_${colIndex}"]`);
+                cells.forEach(cell => {
+                    const td = cell.parentElement;
+                    td.classList.remove('selected-cell');
+                    if (parseInt(cell.value) === rowIndex) {
+                        td.classList.add('selected-cell');
+                    }
+                });
+            });
+        }
+
+        function generateCleanTSV() {
+            const uniqueIndices = new Set();
+            const keyColumn = parseInt(document.getElementById('keyColumn').value);
+
+            const groups = new Map();
+            tsvData.forEach((row, index) => {
+                const key = row[keyColumn];
+                if (!groups.has(key)) {
+                    groups.set(key, []);
+                }
+                groups.get(key).push(index);
+            });
+
+            groups.forEach(indices => {
+                if (indices.length === 1 || autoSelectedRows.has(indices[0])) {
+                    uniqueIndices.add(indices[0]);
+                }
+            });
+
+            selectedRows.forEach((baseIndex, groupIndex) => {
+                const baseRow = [...tsvData[baseIndex]];
+                const cellSelection = cellSelections.get(groupIndex) || {};
+                Object.entries(cellSelection).forEach(([colIndex, rowIndex]) => {
+                    if (rowIndex !== baseIndex) {
+                        baseRow[colIndex] = tsvData[rowIndex][colIndex];
+                    }
+                });
+                tsvData[baseIndex] = baseRow;
+                uniqueIndices.add(baseIndex);
+            });
+
+            const cleanData = Array.from(uniqueIndices)
+                .sort((a, b) => a - b)
+                .map(index => tsvData[index].join('\t'));
+            
+            if (tsvData[0] && tsvData[0].length > 0) {
+                cleanData.unshift(tsvData[0].join('\t'));
+            }
+
+            document.getElementById('cleanTSV').value = cleanData.join('\n');
+        }
+
+        function generateAutoCleanTSV() {
+            const uniqueIndices = new Set();
+            const keyColumn = parseInt(document.getElementById('keyColumn').value);
+
+            const groups = new Map();
+            tsvData.forEach((row, index) => {
+                const key = row[keyColumn];
+                if (!groups.has(key)) {
+                    groups.set(key, []);
+                }
+                groups.get(key).push(index);
+            });
+
+            groups.forEach(indices => {
+                uniqueIndices.add(indices[indices.length - 1]);
+            });
+
+            const cleanData = Array.from(uniqueIndices)
+                .sort((a, b) => a - b)
+                .map(index => tsvData[index].join('\t'));
+            
+            if (tsvData[0] && tsvData[0].length > 0) {
+                cleanData.unshift(tsvData[0].join('\t'));
+            }
+
+            document.getElementById('autoCleanTSV').value = cleanData.join('\n');
+        }
+
+        function copyToClipboard(textareaId) {
+            const textarea = document.getElementById(textareaId);
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value)
+                .then(() => alert('Copied to clipboard!'))
+                .catch(err => alert('Failed to copy: ' + err));
+        }
+
+        function downloadFile(format, textareaId) {
+            const textarea = document.getElementById(textareaId);
+            let content = textarea.value;
+            let filename = format === 'csv' ? 'cleaned_data.csv' : 'cleaned_data.tsv';
+            let mimeType = format === 'csv' ? 'text/csv' : 'text/tab-separated-values';
+
+            if (format === 'csv') {
+                content = content.split('\n').map(line => 
+                    line.split('\t').map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')
+                ).join('\n');
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
