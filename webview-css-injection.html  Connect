@@ -1,0 +1,184 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webview inject CSS Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            max-height: 50vh;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        .button-group {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Webview inject CSS Converter</h1>
+
+    <h3>JS Insert</h3>
+    <div class="button-group">
+        <button onclick="copyToClipboard('#jsInsert')">Copy to Clipboard</button>
+    </div>
+    <pre id="jsInsert"><code>
+function isInAppWebView() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    
+    // Common patterns for mobile app webviews
+    const webviewIndicators = [
+        'wv',              // Android WebView
+        'MobileApp',       // Generic mobile app indicator
+        'WebView',         // Generic webview indicator
+        'iPhone; CPU iPhone OS', // iOS WKWebView
+    ];
+
+    // Check if it's a mobile device
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(userAgent);
+    
+    if (!isMobile) return false;
+
+    // Check for webview indicators
+    const hasWebviewIndicator = webviewIndicators.some(indicator => 
+        userAgent.includes(indicator)
+    );
+
+    // iOS-specific check
+    const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+    const isSafari = /Safari/i.test(userAgent);
+    if (isIOS && !isSafari && userAgent.includes('CPU')) {
+        return true;
+    }
+
+    return hasWebviewIndicator;
+}
+
+function injectCSS(isWebView) {
+    let css;
+    
+    if (isWebView) {
+        // CSS for in-app webview
+        css = `
+            .app-specific {
+              display: block !important;
+            }
+            /* Add more webview-specific styles here */
+        `;
+    } else {
+        // CSS for regular browser
+        css = `
+            .browser-specific {
+              display: block !important;
+            }
+            /* Add more browser-specific styles here */
+        `;
+    }
+
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.appendChild(document.createTextNode(css));
+    document.head.appendChild(styleElement);
+}
+
+// Usage with debugging
+const inWebView = isInAppWebView();
+console.log('Webview status:', inWebView ? 'In App WebView' : 'Regular Browser');
+injectCSS(inWebView);
+    </code></pre>
+
+
+
+
+
+
+    <script>
+        function parseData(input, delimiter) {
+            const lines = input.trim().split('\n');
+            const headers = lines[0].split(delimiter).map(h => h.trim());
+            const result = { replacements: [] };
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(delimiter).map(v => v.trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                result.replacements.push(obj);
+            }
+            return result;
+        }
+
+        function convertToJson(type) {
+            const input = document.getElementById('inputData').value.trim();
+            if (!input) {
+                alert('Please paste some CSV or TSV data first!');
+                return;
+            }
+
+            const delimiter = type === 'csv' ? ',' : '\t';
+            const config = parseData(input, delimiter);
+            const jsonString = JSON.stringify(config, null, 2);
+            
+            // Update JSON output
+            document.getElementById('jsonOutput').textContent = jsonString;
+
+            // Enable buttons
+            document.getElementById('copyButton').disabled = false;
+            document.getElementById('downloadButton').disabled = false;
+        }
+
+        function copyToClipboard(selector) {
+            const content = document.querySelector(selector).textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.textContent = 'Copied to clipboard!';
+                setTimeout(() => feedback.textContent = '', 2000);
+            });
+        }
+
+        function downloadJson() {
+            const jsonContent = document.getElementById('jsonOutput').textContent;
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadExampleCsv() {
+            const exampleCsv = `hrefIncludes,target,withTextLabel,replaceWithHtml,manipulationMethod,activationStart,activationEnd
+/hk/,.pd-buying-price__cta,Out of stock,Coming soon,replace,2025-03-01T00:00:00+08:00,2025-03-31T23:59:59+08:00`;
+            const blob = new Blob([exampleCsv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'example_config.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
