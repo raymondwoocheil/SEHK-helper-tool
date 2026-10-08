@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Grabber</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Helvetica;
+            display: flex;
+            justify-content: center;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+        }
+        h1 {
+            margin: 0;
+            text-align: center;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        select {
+            padding: 5px;
+        }
+        .input-section {
+            margin: 20px 0;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        #progress {
+            margin: 10px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Price Grabber using Hybris Public Product API</h1>
+    
+    <div>
+        <label for="skuInput">Paste TSV/CSV here (one SKU per line or comma/tab-separated):</label><br>
+        <textarea id="skuInput" placeholder="Enter SKUs..."></textarea>
+    </div>
+
+    <div>
+        <label for="fileInput">Or upload CSV/TSV file:</label><br>
+        <input type="file" id="fileInput" accept=".csv,.tsv">
+    </div>
+
+    <div class="controls">
+      <div>
+          <label for="storeSelect">Store:</label>
+          <select id="storeSelect">
+              <option value="hk">B2C Chinese</option>
+              <option value="hk_en">B2C English</option>
+              <option value="hkeducation">SPP</option>
+              <option value="samsunghkem">EPP hkem</option>
+              <option value="samsunghkac">EPP hkac</option>
+              <option value="samsungsso">EPP sso</option>
+              <option value="hkses">EA</option>
+              <option value="hkevent">Event</option>
+              <option value="samsunghkvip">VIP</option>
+              <option value="sehk">SEHK</option>
+              <option value="hksme">SME Business Store</option>
+          </select>
+      </div>
+
+      <div>
+          <label for="delaySelect">Delay between requests:</label>
+          <select id="delaySelect">
+              <option value="0">0ms</option>
+              <option value="5">5ms</option>
+              <option value="25">25ms</option>
+              <option value="50">50ms</option>
+              <option value="100">100ms</option>
+              <option value="200">200ms</option>
+              <option value="300" selected>300ms</option>
+              <option value="500">500ms</option>
+              <option value="1000">1000ms</option>
+          </select>
+      </div>
+
+      <div>
+          <label for="concurrencySelect">Concurrency:</label>
+          <select id="concurrencySelect">
+              <option value="1">1 Concurrent</option>
+              <option value="3">3 Concurrent</option>
+              <option value="5">5 Concurrent</option>
+              <option value="10" selected>10 Concurrent</option>
+              <option value="25">25 Concurrent</option>
+              <option value="50">50 Concurrent</option>
+          </select>
+      </div>
+
+      <div>
+          <button id="startBtn">START</button>
+          <button id="clearBtn">CLEAR</button>
+          <button id="exportCsvBtn">Export to CSV</button>
+          <button id="copyTsvBtn">Copy as TSV</button>
+      </div>
+    </div>
+
+    <div id="progress">Ready</div>
+
+    <table id="resultsTable">
+        <thead>
+            <tr id="tableHeader">
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+  </div>
+
+    <script>
+        const skuInput = document.getElementById('skuInput');
+        const fileInput = document.getElementById('fileInput');
+        const storeSelect = document.getElementById('storeSelect');
+        const delaySelect = document.getElementById('delaySelect');
+        const concurrencySelect = document.getElementById('concurrencySelect');
+        const startBtn = document.getElementById('startBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const copyTsvBtn = document.getElementById('copyTsvBtn');
+        const resultsTable = document.getElementById('resultsTable');
+        const resultsBody = document.getElementById('resultsBody');
+        const tableHeader = document.getElementById('tableHeader');
+        const progress = document.getElementById('progress');
+
+        let results = [];
+
+        // Update table headers based on store selection
+        function updateTableHeaders() {
+            tableHeader.innerHTML = `
+                <th>SKU</th>
+                <th>Stock Status</th>
+                <th>Stock Level</th>
+                <th>Price</th>
+                <th>Promotion Price</th>
+                ${storeSelect.value === 'hksme' ? `
+                    <th>Min Quantity 1</th>
+                    <th>Max Quantity 1</th>
+                    <th>Value 1</th>
+                    <th>Min Quantity 2</th>
+                    <th>Max Quantity 2</th>
+                    <th>Value 2</th>
+                    <th>Min Quantity 3</th>
+                    <th>Max Quantity 3</th>
+                    <th>Value 3</th>
+                ` : ''}
+            `;
+        }
+
+        // Parse SKUs from input, preserving empty lines
+        function parseSkus(input) {
+            return input.split('\n').map(line => line.trim());
+        }
+
+        // Fetch product data
+        async function fetchProductData(sku, store) {
+            if (!sku) {
+                return null; // Skip empty SKUs
+            }
+            // Appending unique timestamp to the URL and adding no-cache headers to bypass caching
+            const url = `https://shop.samsung.com/tokocommercewebservices/v2/${store}/products/${sku}/**?t=${Date.now()}`;
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
+                return {
+                    code: data.code || sku,
+                    price: data.price || { formattedValue: '', value: 0 },
+                    promotionPrice: data.promotionPrice || null,
+                    stock: data.stock || { stockLevel: 0, stockLevelStatus: 'Unavailable' },
+                    tieredPrices: data.tieredPrices || []
+                };
+            } catch (error) {
+                console.error(`Error fetching ${sku}:`, error);
+                progress.textContent = `Error fetching ${sku}. Continuing...`;
+                return { code: sku, error: `Failed to fetch: ${error.message}` };
+            }
+        }
+
+        // Process SKUs with concurrency and progress display
+        async function processSkus(skus, store, delay, concurrency) {
+            results = [];
+            resultsBody.innerHTML = '';
+            updateTableHeaders();
+            const totalSkus = skus.length;
+            let processedCount = 0;
+            const startTime = performance.now();
+
+            const updateProgress = () => {
+                const percentage = totalSkus > 0 ? ((processedCount / totalSkus) * 100).toFixed(0) : 0;
+                progress.textContent = `Processing: ${processedCount}/${totalSkus} (${percentage}%)`;
+            };
+
+            updateProgress();
+
+            const processQueue = async (queue) => {
+                const fetchedResults = [];
+                for (const sku of queue) {
+                    const data = sku ? await fetchProductData(sku, store) : null;
+                    fetchedResults.push(data);
+                    processedCount++;
+                    updateProgress();
+                    if (sku) await new Promise(resolve => setTimeout(resolve, delay));
+                }
+                return fetchedResults;
+            };
+
+            const chunks = [];
+            for (let i = 0; i < skus.length; i += concurrency) {
+                chunks.push(skus.slice(i, i + concurrency));
+            }
+
+            for (const chunk of chunks) {
+                const chunkResults = await Promise.all(chunk.map(sku => processQueue([sku])));
+                results.push(...chunkResults.flat());
+            }
+
+            // Render table only after all fetches are complete, skipping empty SKUs
+            const endTime = performance.now();
+            const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+            progress.textContent = `Completed: ${processedCount}/${totalSkus} (100%) - Total time: ${totalTime}s`;
+            resultsBody.innerHTML = '';
+            results.forEach(data => {
+                if (!data) return; // Skip empty SKUs for table rendering
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${data.code}</td>
+                    <td>${data.error ? '' : data.stock.stockLevelStatus}</td>
+                    <td>${data.error ? '' : data.stock.stockLevel}</td>
+                    <td>${data.error ? data.error : data.price.value}</td>
+                    <td>${data.error ? '' : (data.promotionPrice?.value || '')}</td>
+                    ${store === 'hksme' && !data.error ? `
+                        <td>${data.tieredPrices[0]?.minQuantity || ''}</td>
+                        <td>${data.tieredPrices[0]?.maxQuantity || ''}</td>
+                        <td>${data.tieredPrices[0]?.value || ''}</td>
+                        <td>${data.tieredPrices[1]?.minQuantity || ''}</td>
+                        <td>${data.tieredPrices[1]?.maxQuantity || ''}</td>
+                        <td>${data.tieredPrices[1]?.value || ''}</td>
+                        <td>${data.tieredPrices[2]?.minQuantity || ''}</td>
+                        <td>${data.tieredPrices[2]?.maxQuantity || ''}</td>
+                        <td>${data.tieredPrices[2]?.value || ''}</td>
+                    ` : store === 'hksme' ? '<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>' : ''}
+                `;
+                resultsBody.appendChild(row);
+            });
+        }
+
+        // Handle start button
+        startBtn.addEventListener('click', async () => {
+            const skus = parseSkus(skuInput.value);
+            const store = storeSelect.value;
+            const delay = parseInt(delaySelect.value);
+            const concurrency = parseInt(concurrencySelect.value);
+            if (skus.length > 0) {
+                startBtn.disabled = true;
+                await processSkus(skus, store, delay, concurrency);
+                startBtn.disabled = false;
+            } else {
+                progress.textContent = 'No SKUs entered';
+            }
+        });
+
+        // Handle file upload
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    skuInput.value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Handle clear button
+        clearBtn.addEventListener('click', () => {
+            skuInput.value = '';
+            fileInput.value = '';
+            resultsBody.innerHTML = '';
+            results = [];
+            progress.textContent = 'Ready';
+            updateTableHeaders();
+        });
+
+        // Handle CSV export
+        exportCsvBtn.addEventListener('click', () => {
+            const headers = ['SKU', 'Status', 'Stock', 'RRP', 'NRP'];
+            if (storeSelect.value === 'hksme') {
+                headers.push('Min1', 'Max1', 'Tier1 Price', 'Min2', 'Max2', 'Tier2 Price', 'Min3', 'Max3', 'Tier3 Price');
+            }
+            const csv = [
+                headers.join(','),
+                ...results.map(data => {
+                    if (!data) return ''; // Empty line for empty SKU
+                    const row = [
+                        data.code,
+                        data.error ? '' : data.stock.stockLevelStatus,
+                        data.error ? '' : data.stock.stockLevel,
+                        data.error ? data.error : data.price.value,
+                        data.error ? '' : (data.promotionPrice?.value || '')
+                    ];
+                    if (storeSelect.value === 'hksme') {
+                        row.push(
+                            data.error ? '' : (data.tieredPrices[0]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[0]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[0]?.value || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.value || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.value || '')
+                        );
+                    }
+                    return row.join(',');
+                })
+            ].join('\n');
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`;
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${dateStr}_${storeSelect.value}_price_check.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Handle TSV copy
+        copyTsvBtn.addEventListener('click', () => {
+            const headers = ['SKU', 'Status', 'Stock', 'RRP', 'NRP'];
+            if (storeSelect.value === 'hksme') {
+                headers.push('Min1', 'Max1', 'Tier1 Price', 'Min2', 'Max2', 'Tier2 Price', 'Min3', 'Max3', 'Tier3 Price');
+            }
+            const tsv = [
+                ...results.map(data => {
+                    if (!data) return ''; // Empty line for empty SKU
+                    const row = [
+                        data.code,
+                        data.error ? '' : data.stock.stockLevelStatus,
+                        data.error ? '' : data.stock.stockLevel,
+                        data.error ? data.error : data.price.value,
+                        data.error ? '' : (data.promotionPrice?.value || '')
+                    ];
+                    if (storeSelect.value === 'hksme') {
+                        row.push(
+                            data.error ? '' : (data.tieredPrices[0]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[0]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[0]?.value || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[1]?.value || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.minQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.maxQuantity || ''),
+                            data.error ? '' : (data.tieredPrices[2]?.value || '')
+                        );
+                    }
+                    return row.join('\t');
+                })
+            ].join('\n');
+            navigator.clipboard.writeText(tsv);
+            alert('TSV copied to clipboard!');
+        });
+
+        // Update headers when store changes
+        storeSelect.addEventListener('change', () => {
+            updateTableHeaders();
+            resultsBody.innerHTML = '';
+            results = [];
+            progress.textContent = 'Ready';
+        });
+
+        // Initial header setup
+        updateTableHeaders();
+    </script>
+</body>
+</html>
