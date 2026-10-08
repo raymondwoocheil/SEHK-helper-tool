@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shop App Offer JSON Metadata Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 10px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        th {
+            background-color: #f2f2f2;
+            resize: horizontal;
+            overflow: auto;
+            min-width: 100px;
+        }
+        th:hover {
+            cursor: col-resize;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+        button, input[type="file"], select {
+            margin: 0 10px 10px 0;
+        }
+        #error {
+            color: red;
+            margin: 10px 0;
+            display: none;
+        }
+
+        #tableContainer img {
+            max-height: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div>
+            <select id="deviceSelect">
+                <option value="default">Default Device</option>
+                <option value="ios">iOS</option>
+            </select>
+            <select id="storeIdSelect">
+                <option value="hk">hk</option>
+                <option value="hk_en">hk_en</option>
+                <option value="hkeducation">hkeducation</option>
+            </select>
+            <select id="siteIdSelect">
+                <option value="hk">hk</option>
+                <option value="hk_en">hk_en</option>
+            </select>
+            <button id="fetchBtn">Fetch from API</button>
+        </div>
+        <textarea id="jsonInput" placeholder="Paste JSON here or fetch from API"></textarea>
+        <input type="file" id="jsonFile" accept=".json,.txt">
+        <button id="parseBtn">Parse JSON</button>
+        <button id="exportBtn" style="display: none;">Export to CSV</button>
+        <button id="convertUrls">Convert URLs to Links</button>
+        <button id="convertImageUrls">Show Image</button>
+    </div>
+    <div id="error"></div>
+    <div id="tableContainer"></div>
+
+    <script>
+        // DOM elements
+        const jsonInput = document.getElementById('jsonInput');
+        const jsonFile = document.getElementById('jsonFile');
+        const parseBtn = document.getElementById('parseBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const deviceSelect = document.getElementById('deviceSelect');
+        const storeIdSelect = document.getElementById('storeIdSelect');
+        const siteIdSelect = document.getElementById('siteIdSelect');
+        const errorDiv = document.getElementById('error');
+        const tableContainer = document.getElementById('tableContainer');
+
+        let parsedItems = []; // Store parsed data for export
+
+        // Handle file upload
+        jsonFile.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    jsonInput.value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Fetch JSON from API
+        fetchBtn.addEventListener('click', async () => {
+            errorDiv.style.display = 'none';
+            tableContainer.innerHTML = '';
+            exportBtn.style.display = 'none';
+
+            const device = deviceSelect.value;
+            const storeId = storeIdSelect.value;
+            const siteId = siteIdSelect.value;
+            const url = `https://opstools-p1-hk.ecom-qa.samsung.com/ops-api/v1/_mobile/content?env=stage&type=Offerv2&device=${device}&store_id=${storeId}&site_id=${siteId}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const jsonText = await response.text();
+                jsonInput.value = jsonText;
+                parseBtn.click(); // Automatically parse after fetching
+            } catch (error) {
+                showError('Failed to fetch JSON from API: ' + error.message);
+            }
+        });
+
+        // Parse and render JSON
+        parseBtn.addEventListener('click', () => {
+            errorDiv.style.display = 'none';
+            tableContainer.innerHTML = '';
+            exportBtn.style.display = 'none';
+            
+            let jsonData;
+            try {
+                jsonData = JSON.parse(jsonInput.value);
+            } catch (error) {
+                showError('Invalid JSON format: ' + error.message);
+                return;
+            }
+
+            if (!jsonData.result || !jsonData.result.deck) {
+                showError('JSON must contain result.deck array');
+                return;
+            }
+
+            // Create mapping of marketingMetadata.id to marketingMetadata.title
+            const idToTitleMap = new Map();
+            jsonData.result.deck.forEach(deckItem => {
+                if (deckItem.marketingMetadata && Array.isArray(deckItem.marketingMetadata)) {
+                    deckItem.marketingMetadata.forEach(meta => {
+                        if (meta.id && meta.title) {
+                            idToTitleMap.set(meta.id, meta.title);
+                        }
+                    });
+                }
+            });
+
+            parsedItems = [];
+            jsonData.result.deck.forEach(deckItem => {
+                if (deckItem.marketingMetadata && Array.isArray(deckItem.marketingMetadata)) {
+                    deckItem.marketingMetadata.forEach(meta => {
+                        const mappedParentIDs = deckItem.parentIDs 
+                            ? deckItem.parentIDs.map(id => idToTitleMap.get(id) || id).join(', ')
+                            : '';
+                        parsedItems.push({
+                            title: deckItem.title || '',
+                            metaTitle: meta.title || '',
+                            parentIDs: mappedParentIDs,
+                            deepLink: meta.deepLink || '',
+                            deeplinkQuery: meta.deeplinkQuery || '',
+                            mediaTargetURL: meta.mediaTargetURL || '',
+                            minDate: formatHKTime(meta.minDate?.time),
+                            maxDate: formatHKTime(meta.maxDate?.time),
+                            isShownOnScreen: meta.isShownOnScreen ? 'Yes' : 'No',
+                            gbm: meta.gbm || '',
+                            mobileMediaURL: meta.responsiveMediaUrls?.mobile?.mediaURL || '',
+                            tabletMediaURL: meta.responsiveMediaUrls?.tablet?.mediaURL || ''
+                        });
+                    });
+                }
+            });
+
+            renderTable(parsedItems);
+            if (parsedItems.length > 0) {
+                exportBtn.style.display = 'inline';
+            }
+        });
+
+        // Format timestamp to Hong Kong time (UTC+8) in dd/mm/yyyy hh:mm
+        function formatHKTime(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) return '';
+            const hkTime = new Date(date.getTime() + (8 * 60 * 60 * 1000)); // UTC+8
+            const day = String(hkTime.getUTCDate()).padStart(2, '0');
+            const month = String(hkTime.getUTCMonth() + 1).padStart(2, '0');
+            const year = hkTime.getUTCFullYear();
+            const hours = String(hkTime.getUTCHours()).padStart(2, '0');
+            const minutes = String(hkTime.getUTCMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+
+        // Show error message
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Render table
+        function renderTable(items) {
+            if (items.length === 0) {
+                showError('No marketing metadata found in JSON');
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">Title</th>
+                            <th style="width: 150px;">Marketing Title</th>
+                            <th style="width: 150px;">Parent IDs</th>
+                            <th style="width: 200px;">Deep Link</th>
+                            <th style="width: 250px;">Deeplink Query</th>
+                            <th style="width: 250px;">Media Target URL</th>
+                            <th style="width: 150px;">Min Date (HKT)</th>
+                            <th style="width: 150px;">Max Date (HKT)</th>
+                            <th style="width: 100px;">Shown on Screen</th>
+                            <th style="width: 100px;">GBM</th>
+                            <th style="width: 250px;">Mobile Media URL</th>
+                            <th style="width: 250px;">Tablet Media URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            items.forEach(item => {
+                html += `
+                    <tr>
+                        <td title="${item.title}">${item.title}</td>
+                        <td title="${item.metaTitle}">${item.metaTitle}</td>
+                        <td title="${item.parentIDs}">${item.parentIDs}</td>
+                        <td title="${item.deepLink}">${item.deepLink}</td>
+                        <td title="${item.deeplinkQuery}">${item.deeplinkQuery}</td>
+                        <td title="${item.mediaTargetURL}">${item.mediaTargetURL}</td>
+                        <td>${item.minDate}</td>
+                        <td>${item.maxDate}</td>
+                        <td>${item.isShownOnScreen}</td>
+                        <td>${item.gbm}</td>
+                        <td title="${item.mobileMediaURL}">${item.mobileMediaURL}</td>
+                        <td title="${item.tabletMediaURL}">${item.tabletMediaURL}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            tableContainer.innerHTML = html;
+        }
+
+        // Export to CSV
+        exportBtn.addEventListener('click', () => {
+            if (parsedItems.length === 0) return;
+
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            const headers = [
+                'Title', 'Marketing Title', 'Parent IDs', 'Deep Link', 'Deeplink Query', 'Media Target URL',
+                'Min Date (HKT)', 'Max Date (HKT)', 'Shown on Screen', 'GBM',
+                'Mobile Media URL', 'Tablet Media URL'
+            ];
+            csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+
+            parsedItems.forEach(item => {
+                const row = [
+                    item.title,
+                    item.metaTitle,
+                    item.parentIDs,
+                    item.deepLink,
+                    item.deeplinkQuery,
+                    item.mediaTargetURL,
+                    item.minDate,
+                    item.maxDate,
+                    item.isShownOnScreen,
+                    item.gbm,
+                    item.mobileMediaURL,
+                    item.tabletMediaURL
+                ].map(value => `"${(value || '').toString().replace(/"/g, '""')}"`).join(',');
+                csvContent += row + '\n';
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `marketing_metadata_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        /*
+        document.getElementById('convertUrls').addEventListener('click', function() {
+            // Function to walk through text nodes
+            function walkTextNodes(node) {
+                if (node.nodeType === 3) { // Text node
+                    let text = node.textContent;
+                    let urlRegex = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/g;
+                    if (urlRegex.test(text)) {
+                        let newHTML = text.replace(urlRegex, function(url) {
+                            let href = url.startsWith('www.') ? 'http://' + url : url;
+                            return `<a href="${href}" target="_blank">${url}</a>`;
+                        });
+                        let tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = newHTML;
+                        while (tempDiv.firstChild) {
+                            node.parentNode.insertBefore(tempDiv.firstChild, node);
+                        }
+                        node.parentNode.removeChild(node);
+                    }
+                } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'A'].includes(node.tagName)) {
+                    // Recursively process child nodes, excluding script, style, and anchor tags
+                    Array.from(node.childNodes).forEach(walkTextNodes);
+                }
+            }
+
+            // Start processing from body
+            walkTextNodes(document.body);
+        });
+        */
+
+        document.getElementById('convertUrls').addEventListener('click', function() {
+            // Function to walk through text nodes
+            function walkTextNodes(node) {
+                if (node.nodeType === 3) { // Text node
+                    let text = node.textContent;
+                    // Regex to match only www.samsung.com URLs
+                    let urlRegex = /(https?:\/\/www\.samsung\.com(?:\/[^\s<>"']*)?|www\.samsung\.com(?:\/[^\s<>"']*)?)/g;
+                    if (urlRegex.test(text)) {
+                        let newHTML = text.replace(urlRegex, function(url) {
+                            let href = url.startsWith('www.') ? 'https://' + url : url;
+                            return `<a href="${href}" target="_blank">${url}</a>`;
+                        });
+                        let tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = newHTML;
+                        while (tempDiv.firstChild) {
+                            node.parentNode.insertBefore(tempDiv.firstChild, node);
+                        }
+                        node.parentNode.removeChild(node);
+                    }
+                } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'A'].includes(node.tagName)) {
+                    // Recursively process child nodes, excluding script, style, and anchor tags
+                    Array.from(node.childNodes).forEach(walkTextNodes);
+                }
+            }
+
+            // Start processing from body
+            walkTextNodes(document.body);
+        });
+        
+        document.getElementById('convertImageUrls').addEventListener('click', function() {
+            // Function to walk through text nodes
+            function walkTextNodes(node) {
+                if (node.nodeType === 3) { // Text node
+                    let text = node.textContent;
+                    // Regex to match URLs containing p1-img-mobile-cdn
+                    let urlRegex = /(https?:\/\/[^\s<>"']*p1-img-mobile-cdn[^\s<>"']*\.(?:jpg|png|gif|jpeg))/gi;
+                    if (urlRegex.test(text)) {
+                        let newHTML = text.replace(urlRegex, function(url) {
+                            return `<img src="${url}" class="converted-image" alt="Converted image" data-url="${url}">`;
+                        });
+                        let tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = newHTML;
+                        while (tempDiv.firstChild) {
+                            node.parentNode.insertBefore(tempDiv.firstChild, node);
+                        }
+                        node.parentNode.removeChild(node);
+                    }
+                } else if (node.nodeType === 1 && !['SCRIPT', 'STYLE', 'IMG'].includes(node.tagName)) {
+                    // Recursively process child nodes, excluding script, style, and img tags
+                    Array.from(node.childNodes).forEach(walkTextNodes);
+                }
+            }
+
+            // Start processing from body
+            walkTextNodes(document.body);
+
+            // Add click event listeners to all converted images
+            document.querySelectorAll('.converted-image').forEach(img => {
+                img.addEventListener('click', function() {
+                    window.open(this.getAttribute('data-url'), '_blank');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
