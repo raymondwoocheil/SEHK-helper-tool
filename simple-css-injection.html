@@ -1,0 +1,136 @@
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple inject CSS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            max-height: 50vh;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        .button-group {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple inject CSS</h1>
+
+    <h3>JS Insert</h3>
+    <div class="button-group">
+        <button onclick="copyToClipboard('#jsInsert')">Copy to Clipboard</button>
+    </div>
+    <pre id="jsInsert"><code>
+document.addEventListener('DOMContentLoaded', injectStyles);
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  injectStyles();
+}
+
+function injectStyles() {
+  const customCss = `
+    
+  `;
+  const styleElement = document.createElement('style');
+  styleElement.type = 'text/css';
+  styleElement.appendChild(document.createTextNode(customCss));
+  document.head.appendChild(styleElement);
+}
+    </code></pre>
+
+
+
+
+
+
+    <script>
+        function parseData(input, delimiter) {
+            const lines = input.trim().split('\n');
+            const headers = lines[0].split(delimiter).map(h => h.trim());
+            const result = { replacements: [] };
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(delimiter).map(v => v.trim());
+                const obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = values[index] || '';
+                });
+                result.replacements.push(obj);
+            }
+            return result;
+        }
+
+        function convertToJson(type) {
+            const input = document.getElementById('inputData').value.trim();
+            if (!input) {
+                alert('Please paste some CSV or TSV data first!');
+                return;
+            }
+
+            const delimiter = type === 'csv' ? ',' : '\t';
+            const config = parseData(input, delimiter);
+            const jsonString = JSON.stringify(config, null, 2);
+            
+            // Update JSON output
+            document.getElementById('jsonOutput').textContent = jsonString;
+
+            // Enable buttons
+            document.getElementById('copyButton').disabled = false;
+            document.getElementById('downloadButton').disabled = false;
+        }
+
+        function copyToClipboard(selector) {
+            const content = document.querySelector(selector).textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.textContent = 'Copied to clipboard!';
+                setTimeout(() => feedback.textContent = '', 2000);
+            });
+        }
+
+        function downloadJson() {
+            const jsonContent = document.getElementById('jsonOutput').textContent;
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadExampleCsv() {
+            const exampleCsv = `hrefIncludes,target,withTextLabel,replaceWithHtml,manipulationMethod,activationStart,activationEnd
+/hk/,.pd-buying-price__cta,Out of stock,Coming soon,replace,2025-03-01T00:00:00+08:00,2025-03-31T23:59:59+08:00`;
+            const blob = new Blob([exampleCsv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'example_config.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
