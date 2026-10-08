@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Samsung Hong Kong - Magic Tool v3 (App DeepLink Support)</title>
+  <style>
+    #container {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      top: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: sans-serif;
+      text-align: center;
+      background: #cccccc;
+      overflow-y: auto;
+    }
+    #container svg.icon {
+      transform: scale(1.3);
+      margin-bottom: 2rem;
+    }
+    .text-block {
+      margin: 10px 0;
+      line-height: 1.4;
+    }
+    #message-zh, #countdown-zh, .actionText-zh { font-size: 1rem; color: #333; display: block; }
+    #message-en, #countdown-en, .actionText-en { font-size: 0.9rem; color: #666; display: block; }
+    #countdown-zh, #countdown-en { color: #c00; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #cccccc;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13px;
+    }
+    th { background: #eee; }
+    .product-name { font-size: 14px; color: #000; display: block; margin-bottom: 2px; }
+    .product-code { font-size: 11px; color: #888; display: block; }
+    .oos { color: #cc0000; font-weight: bold; }
+    
+    .btn-proceed {
+      background-color: #000;
+      color: #fff;
+      padding: 12px 24px;
+      border: 1px solid rgba(0,0,0,0.5);
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 14px;
+      min-width: 260px;
+    }
+    .btn-proceed:hover { background-color: #EEE; color: #000; transition: all 0.4s; }
+    .btn-proceed:active { background-color: #333; color: #FFF; transition: all 0.1s; }
+    
+    .btn-secondary {
+      background: transparent;
+      color: #000;
+      padding: 12px 24px;
+      border: 1px solid rgba(0,0,0,0.5);
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 14px;
+      min-width: 260px;
+    }
+    .btn-secondary:hover { background-color: #EEE; transition: all 0.4s; }
+    .btn-secondary:active { background-color: #333; color: #FFF; transition: all 0.1s; }
+
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border-left-color: #000;
+      animation: spin 1s linear infinite;
+      display: none;
+      margin: 10px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div>
+      <svg class="icon" focusable="false" aria-hidden="true" width="130" height="29" viewBox="0 0 130 29">
+        <g transform="translate(-250 -7)">
+          <path d="M0,13.835V12.482H4.609V14.2a1.558,1.558,0,0,0,1.724,1.6A1.509,1.509,0,0,0,8,14.6a2.237,2.237,0,0,0-.03-1.322C7.076,10.976.981,9.931.208,6.333a6.531,6.531,0,0,1-.029-2.4C.654,1.045,3.122,0,6.184,0c2.438,0,5.8.585,5.8,4.458V5.719H7.7V4.612a1.492,1.492,0,0,0-1.605-1.6,1.452,1.452,0,0,0-1.575,1.2,2.468,2.468,0,0,0,.03.922c.5,2.059,7.017,3.167,7.73,6.887a8.481,8.481,0,0,1,.029,2.921C11.892,17.893,9.336,19,6.244,19,3,19,0,17.8,0,13.835Zm55.837-.062V12.421h4.549v1.691a1.533,1.533,0,0,0,1.695,1.6,1.49,1.49,0,0,0,1.665-1.168,2.147,2.147,0,0,0-.029-1.292c-.863-2.274-6.9-3.319-7.671-6.917a6.37,6.37,0,0,1-.03-2.367c.476-2.859,2.944-3.9,5.946-3.9,2.409,0,5.739.615,5.739,4.427v1.23H63.449V4.643a1.485,1.485,0,0,0-1.575-1.6,1.4,1.4,0,0,0-1.546,1.168,2.463,2.463,0,0,0,.029.922C60.832,7.194,67.284,8.27,68,11.959a8.314,8.314,0,0,1,.029,2.89c-.416,2.952-2.943,4.028-6.005,4.028C58.811,18.877,55.837,17.678,55.837,13.773Zm16.293.647A7.18,7.18,0,0,1,72.1,13.25V.523h4.341V13.65a5.023,5.023,0,0,0,.029.677,1.682,1.682,0,0,0,3.271,0,4.852,4.852,0,0,0,.03-.677V.523h4.341V13.25c0,.339-.03.984-.03,1.169-.3,3.319-2.825,4.4-5.976,4.4S72.428,17.739,72.13,14.419Zm35.739-.185a9.539,9.539,0,0,1-.059-1.168V5.6c0-.308.029-.861.059-1.169.386-3.319,2.973-4.365,6.036-4.365,3.033,0,5.708,1.045,6.006,4.365A8.781,8.781,0,0,1,119.94,5.6v.584H115.6V5.2a3.791,3.791,0,0,0-.059-.677,1.777,1.777,0,0,0-3.42,0,3.772,3.772,0,0,0-.059.829v8.117a5.1,5.1,0,0,0,.03.677,1.707,1.707,0,0,0,1.813,1.291,1.633,1.633,0,0,0,1.754-1.291,2.554,2.554,0,0,0,.03-.677V10.883h-1.754V8.3H120v4.765a9.377,9.377,0,0,1-.06,1.168c-.3,3.228-3,4.366-6.036,4.366S108.166,17.462,107.869,14.235Zm-60.5,4.027L47.245,1.845,44.272,18.262H39.931L36.987,1.845l-.118,16.417H32.587L32.943.554h6.988L42.1,14.388,44.272.554h6.987l.386,17.708Zm-22.835,0L22.211,1.845,19.831,18.262H15.194L18.344.554h7.642l3.152,17.708Zm72.665-.184L92.884,3.352l.238,14.726H88.9V.554h6.363l4.044,14.265L99.068.554h4.251V18.078Z" transform="translate(255 12)"></path>
+        </g>
+      </svg>
+    </div>
+    <div id="spinner" class="spinner"></div>
+    <div class="text-block">
+      <span id="message-zh">準備中...</span>
+      <span id="message-en">Loading...</span>
+    </div>
+    <div id="statusTableContainer"></div>
+    <div class="text-block">
+      <span id="countdown-zh"></span>
+      <span id="countdown-en"></span>
+    </div>
+    <div id="actionContainer" style="display: flex; flex-direction: column; align-items: center;"></div>
+  </div>
+
+<script>
+/**
+ * Using sessionStorage as a hardware-level lock.
+ * window variables (let isRedirecting) can be wiped if the webview 
+ * clears its JS context during a protocol switch (samsungestore://).
+ */
+
+function rawSlashEncode(str) {
+  if (!str) return "";
+  return encodeURIComponent(str).replace(/%2F/g, "/");
+}
+
+function getQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  const products = [];
+  const indices = new Set();
+  for (const key of params.keys()) {
+    const match = key.match(/^productCode\[(\d+)\]$/);
+    if (match) indices.add(match[1]);
+  }
+
+  if (params.has('productCode') && indices.size === 0) {
+    products.push({
+      sku: params.get('productCode'),
+      qty: parseInt(params.get('productQty')) || 1
+    });
+  } else {
+    Array.from(indices).sort((a, b) => a - b).forEach(idx => {
+      products.push({
+        sku: params.get(`productCode[${idx}]`),
+        qty: parseInt(params.get(`productQty[${idx}]`)) || 1
+      });
+    });
+  }
+
+  return {
+    products,
+    voucherCode: params.get('voucherCode'),
+    oosLink: params.get('oosLink'),
+    debug: params.get('debug') === 'true',
+    isApp: params.get('app') === 'true',
+    newCart: params.get('newCart') === 'true',
+    store: params.get('store')
+  };
+}
+
+function updateMessage(zh, en) {
+  document.getElementById('message-zh').textContent = zh;
+  document.getElementById('message-en').textContent = en;
+}
+
+function updateCountdown(zh, en) {
+  document.getElementById('countdown-zh').textContent = zh;
+  document.getElementById('countdown-en').textContent = en;
+}
+
+function getFallbackUrl(oosLink, products, stockResponses, isApp) {
+  let finalUrl = "https://www.samsung.com/hk/offer/";
+  if (oosLink) {
+    let formatted = /^(?:ht)tps?:\/\//.test(oosLink) ? oosLink : `https://${oosLink}`;
+    try {
+      const parsed = new URL(formatted);
+      if (parsed.hostname === "samsung.com" || parsed.hostname.endsWith(".samsung.com")) {
+        finalUrl = formatted;
+      }
+    } catch (e) {}
+  } else if (products.length === 1) {
+    const response = stockResponses.find(r => r.sku === products[0].sku);
+    if (response) {
+      finalUrl = `https://shop.samsung.com/hk/p/${rawSlashEncode(products[0].sku)}`;
+    }
+  }
+  return isApp ? `samsungestore://openwebview#url=${finalUrl}` : finalUrl;
+}
+
+async function fetchProductNames(skus) {
+  const namesMap = {};
+  if (skus.length === 0) return namesMap;
+  try {
+    const searchApiUrl = `https://searchapi.samsung.com/v6/front/b2c/product/card/detail/global?siteCode=hk_en&onlyRequestSkuYN=Y&quicklookYN=Y&modelList=${rawSlashEncode(skus.join(','))}`;
+    const response = await fetch(searchApiUrl);
+    const data = await response.json();
+    const productList = data.response?.resultData?.productList || [];
+    productList.forEach(pd => {
+      pd.modelList?.forEach(model => {
+        if (model.modelCode && model.displayName) namesMap[model.modelCode] = model.displayName;
+      });
+    });
+  } catch (e) { console.error("Name fetch error", e); }
+  return namesMap;
+}
+
+async function processCheckout(items, voucher, isApp, store, newCart) {
+  // PERSISTENT LOCK: prevents double execution if the app refreshes the webview
+  if (sessionStorage.getItem('checkout_triggered')) return;
+  sessionStorage.setItem('checkout_triggered', 'true');
+
+  document.getElementById('statusTableContainer').style.display = 'none';
+  document.getElementById('actionContainer').innerHTML = '';
+  
+  let cartBase = 'hk';
+  if (store === 'SPP') cartBase = 'hkeducation';
+  else if (store === 'EPP') cartBase = 'samsunghkem';
+  else if (store === 'EA') cartBase = 'hkses';
+
+  let storeBase = '';
+  if (store === 'SPP') storeBase = '#store_id=hkeducation';
+  else if (store === 'EPP') storeBase = '#store_id=samsunghkem';
+
+  let cartUrl = `https://shop.samsung.com/tokocommercewebservices/v2/${cartBase}/addToCart/multi?redirect=CART`;
+  
+  items.forEach((item, index) => {
+    cartUrl += `&products%5B${index}%5D.productCode=${rawSlashEncode(item.sku)}&products%5B${index}%5D.qty=${encodeURIComponent(item.qty)}`;
+  });
+  if (voucher) cartUrl += `&voucherCode=${encodeURIComponent(voucher)}`;
+  cartUrl += newCart ? "&newCart=true" : "&newCart=false";
+  if (isApp) cartUrl += `${storeBase}`;
+
+  if (isApp) {
+    cartUrl = `samsungestore://openwebview#url=${cartUrl}`;
+    updateMessage('正在為您加入 Shop App 購物車...', 'Adding product to cart in Shop App...');
+
+    const actionContainer = document.getElementById('actionContainer');
+    const appCartProblem = document.createElement('div');
+    appCartProblem.className = 'actionText-zh';
+    appCartProblem.textContent = '未能開啟 Shop App?';
+
+    const appCartProblemEn = document.createElement('div');
+    appCartProblemEn.className = 'actionText-en';
+    appCartProblemEn.textContent = 'Have issues opening Shop App?';
+    
+    const btnApp = document.createElement('button');
+    btnApp.className = 'btn-proceed';
+    btnApp.textContent = '按此重試 Retry';
+    btnApp.onclick = () => {
+      sessionStorage.removeItem('checkout_triggered');
+      processCheckout(items, voucher, true, store, newCart);
+    };
+
+    const btnWeb = document.createElement('button');
+    btnWeb.className = 'btn-secondary';
+    btnWeb.textContent = '加到網頁版購物車 Add to Web Version';
+    btnWeb.onclick = () => {
+      sessionStorage.removeItem('checkout_triggered');
+      processCheckout(items, voucher, false, store, newCart);
+    };
+
+    actionContainer.appendChild(appCartProblem);
+    actionContainer.appendChild(appCartProblemEn);
+    actionContainer.appendChild(btnApp);
+    actionContainer.appendChild(btnWeb);
+  } else {
+    document.getElementById('spinner').style.display = 'block';
+    updateMessage('正在為您加入購物車...', 'Adding product to cart...');
+  }
+
+  window.location.href = cartUrl;
+}
+
+async function checkStock() {
+  const { products, voucherCode, oosLink, debug, isApp, store, newCart } = getQueryParams();
+  const tableContainer = document.getElementById('statusTableContainer');
+  const actionContainer = document.getElementById('actionContainer');
+
+  if (products.length === 0) {
+    updateMessage('缺少必需參數：productCode', 'Missing required parameter: productCode');
+    return;
+  }
+
+  updateMessage('正在查詢庫存狀況...', 'Checking stock status...');
+
+  const skus = products.map(p => p.sku);
+  const [nameMap, stockResponses] = await Promise.all([
+    fetchProductNames(skus),
+    Promise.all(products.map(async p => {
+      try {
+        const res = await fetch(`https://shop.samsung.com/tokocommercewebservices/v2/hk/products/${rawSlashEncode(p.sku)}/**`, { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        if (!data.stock) return { sku: p.sku, qty: p.qty, isAvailable: false, status: 'error', level: 0 };
+        const stockInfo = data.stock || {};
+        const status = stockInfo.stockLevelStatus || 'outOfStock';
+        const level = stockInfo.stockLevel || 0;
+        let isAvailable = (status === 'inStock' || status === 'preOrder') && (status !== 'inStock' || level >= p.qty);
+        return { sku: p.sku, qty: p.qty, isAvailable, status, level };
+      } catch (e) { return { sku: p.sku, qty: p.qty, isAvailable: false, status: 'error', level: 0 }; }
+    }))
+  ]);
+
+  const availableItems = stockResponses.filter(r => r.isAvailable);
+  const allAvailable = availableItems.length === stockResponses.length;
+  const finalFallback = getFallbackUrl(oosLink, products, stockResponses, isApp);
+
+  if (allAvailable && !debug) {
+    processCheckout(availableItems, voucherCode, isApp, store, newCart);
+  } else {
+    const isSingle = products.length === 1;
+    updateMessage(
+      isSingle ? '抱歉，此產品暫時缺貨。' : (debug ? 'Debug Mode - 庫存清單' : '抱歉，部份產品暫時缺貨。'),
+      isSingle ? 'Sorry, this product is currently out of stock.' : (debug ? 'Debug Mode - Stock List' : 'Sorry, some products are currently out of stock.')
+    );
+    
+    const table = document.createElement('table');
+    if (!isSingle) {
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>產品 Product</th><th>庫存 Availability</th></tr>';
+      table.appendChild(thead);
+    }
+
+    const tbody = document.createElement('tbody');
+    stockResponses.forEach(r => {
+      const tr = document.createElement('tr');
+      const tdProd = document.createElement('td');
+      tdProd.innerHTML = `<span class="product-name">${nameMap[r.sku] || 'Samsung Product'}</span><span class="product-code">${r.qty > 1 ? `${r.sku} (Qty: ${r.qty})` : r.sku}</span>`;
+      tr.appendChild(tdProd);
+      if (!isSingle) {
+        const tdStatus = document.createElement('td');
+        if (r.isAvailable) tdStatus.textContent = '有庫存 Available';
+        else { tdStatus.className = 'oos'; tdStatus.textContent = (r.status === 'inStock' && r.level < r.qty) ? `庫存不足 Insufficient` : '暫時缺貨 Out of Stock'; }
+        tr.appendChild(tdStatus);
+      }
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableContainer.appendChild(table);
+
+    if (availableItems.length > 0) {
+      const btnProceed = document.createElement('button');
+      btnProceed.className = 'btn-proceed';
+      btnProceed.textContent = '加入有庫存的產品 Add available products to cart';
+      btnProceed.onclick = () => {
+        sessionStorage.removeItem('checkout_triggered');
+        processCheckout(availableItems, voucherCode, isApp, store, newCart);
+      };
+      actionContainer.appendChild(btnProceed);
+
+      const btnOther = document.createElement('button');
+      btnOther.className = 'btn-secondary';
+      btnOther.textContent = '選購其他產品 Shop other products';
+      btnOther.onclick = () => { window.location.href = finalFallback; };
+      actionContainer.appendChild(btnOther);
+    } else {
+      let seconds = 6;
+      const timer = setInterval(() => {
+        updateCountdown(`將在 ${seconds} 秒後重定向...`, `Redirecting in ${seconds} seconds...`);
+        if (seconds-- <= 0) { clearInterval(timer); window.location.href = finalFallback; }
+      }, 1000);
+    }
+  }
+}
+
+// Reset lock on initial fresh load (no session history)
+if (performance.navigation.type !== 1) { sessionStorage.removeItem('checkout_triggered'); }
+checkStock();
+</script>
+</body>
+</html>
