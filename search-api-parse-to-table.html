@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Finder Crawler & Parser</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f4f7f9; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { padding: 10px 20px; cursor: pointer; border: 1px solid #ccc; background: #eee; border-radius: 4px; font-weight: bold; }
+        .tab-btn.active { background: #007aff; color: white; border-color: #007aff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: monospace; }
+        .controls { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        #startBtn, #parseBtn { background: #007aff; color: white; }
+        #exportCsvBtn { background: #34c759; color: white; }
+        #copyTsvBtn { background: #5856d6; color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status { margin-top: 15px; font-size: 0.9em; color: #666; }
+        .table-container { margin-top: 20px; overflow-x: auto; border: 1px solid #eee; border-radius: 4px; max-height: 500px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th { background: #f8f9fa; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #eee; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Product Finder Tool</h2>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('fetch', this)">Fetch by ID</button>
+        <button class="tab-btn" onclick="showTab('parse', this)">Parse JSON</button>
+    </div>
+
+    <div id="fetch" class="tab-content active">
+        <textarea id="typeIds" placeholder="Enter Type IDs..."></textarea>
+        <div class="controls">
+            <button id="startBtn" onclick="fetchData()">Fetch Data</button>
+        </div>
+    </div>
+
+    <div id="parse" class="tab-content">
+        <textarea id="jsonInput" placeholder="Paste JSON response here..."></textarea>
+        <div class="controls">
+            <button id="parseBtn" onclick="processJsonInput()">Parse JSON</button>
+        </div>
+    </div>
+
+    <div id="status" class="status">Ready.</div>
+    
+    <div class="controls">
+        <button id="exportCsvBtn" onclick="downloadCSV()" disabled>Export CSV</button>
+        <button id="copyTsvBtn" onclick="copyTSV()" disabled>Copy TSV</button>
+    </div>
+
+    <div class="table-container">
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>fmyMarketingName</th><th>modelName</th><th>modelCode</th><th>configUse</th>
+                    <th>configUrl</th><th>pdpUrl</th><th>catSubType</th><th>pviType</th>
+                    <th>pviSubtype</th><th>catSubEng</th><th>marketingPdp</th><th>simplePd</th><th>thumbUrl</th><th>largeUrl</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let allData = [];
+    const resultsBody = document.getElementById('resultsBody');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const copyTsvBtn = document.getElementById('copyTsvBtn');
+
+    function showTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function updateTable(data) {
+        allData = data;
+        resultsBody.innerHTML = '';
+        allData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = Object.values(row).map(val => `<td>${val}</td>`).join('');
+            resultsBody.appendChild(tr);
+        });
+        exportCsvBtn.disabled = allData.length === 0;
+        copyTsvBtn.disabled = allData.length === 0;
+    }
+
+    function processJsonInput() {
+        try {
+            const json = JSON.parse(document.getElementById('jsonInput').value);
+            const productList = json.response?.resultData?.productList;
+            if (!productList) throw new Error("Invalid structure");
+            
+            const newData = [];
+            productList.forEach(product => {
+                const models = product.modelList || [{}];
+                models.forEach(model => {
+                    newData.push({
+                        fmyMarketingName: product.fmyMarketingName || '',
+                        modelName: model.modelName || '',
+                        modelCode: model.modelCode || '',
+                        configuratorUseYn: model.configuratorUseYn || '',
+                        configuratorUrl: model.configuratorUrl || '',
+                        originPdpUrl: model.originPdpUrl || '',
+                        categorySubTypeCode: product.categorySubTypeCode || '',
+                        pviTypeName: model.pviTypeName || '',
+                        pviSubtypeName: model.pviSubtypeName || '',
+                        categorySubTypeEngName: product.categorySubTypeEngName || '',
+                        marketingpdpYN: model.marketingpdpYN || '',
+                        simplePdYN: product.simplePdYN || '',
+                        thumbUrl: model.thumbUrl || '',
+                        largeUrl: model.largeUrl || ''
+                    });
+                });
+            });
+            updateTable(newData);
+            document.getElementById('status').textContent = `Parsed ${newData.length} rows.`;
+        } catch (e) { alert('Invalid JSON format or structure.'); }
+    }
+
+    async function fetchData() {
+        const input = document.getElementById('typeIds').value;
+        const ids = input.split(/[\n,]+/).map(id => id.trim()).filter(id => id);
+        if (ids.length === 0) return alert('Enter Type IDs.');
+        
+        let fetchedData = [];
+        for (const typeId of ids) {
+            document.getElementById('status').textContent = `Fetching ${typeId}...`;
+            try {
+                const res = await fetch(`https://searchapi.samsung.com/v6/front/b2c/product/finder/global?type=${typeId}&siteCode=hk&start=1&num=2000&sort=newest&onlyFilterInfoYN=N&keySummaryYN=Y&specHighlightYN=Y`);
+                const json = await res.json();
+                const productList = json.response?.resultData?.productList;
+                if (productList) {
+                    productList.forEach(product => {
+                        const models = product.modelList || [{}];
+                        models.forEach(model => {
+                            fetchedData.push({
+                                fmyMarketingName: product.fmyMarketingName || '',
+                                modelName: model.modelName || '',
+                                modelCode: model.modelCode || '',
+                                configuratorUseYn: model.configuratorUseYn || '',
+                                configuratorUrl: model.configuratorUrl || '',
+                                originPdpUrl: model.originPdpUrl || '',
+                                categorySubTypeCode: product.categorySubTypeCode || '',
+                                pviTypeName: model.pviTypeName || '',
+                                pviSubtypeName: model.pviSubtypeName || '',
+                                categorySubTypeEngName: product.categorySubTypeEngName || '',
+                                marketingpdpYN: model.marketingpdpYN || '',
+                                simplePdYN: product.simplePdYN || '',
+                                thumbUrl: model.thumbUrl || '',
+                                largeUrl: model.largeUrl || ''
+                            });
+                        });
+                    });
+                }
+            } catch (err) { console.error(err); }
+        }
+        updateTable(fetchedData);
+        document.getElementById('status').textContent = `Finished. Total: ${fetchedData.length}`;
+    }
+
+    function downloadCSV() {
+        const header = ["fmyMarketingName", "modelName", "modelCode", "configUse", "configUrl", "pdpUrl", "catSubType", "pviType", "pviSubtype", "catSubEng", "marketingPdp", "simplePd","thumbUrl","largeUrl"];
+        const rows = allData.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+        const blob = new Blob([[header.join(','), ...rows].join('\n')], { type: 'text/csv' });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "samsung_data.csv";
+        a.click();
+    }
+
+    function copyTSV() {
+        const tsv = allData.map(row => Object.values(row).join('\t')).join('\n');
+        navigator.clipboard.writeText(tsv).then(() => alert('Copied to clipboard!'));
+    }
+</script>
+</body>
+</html>
